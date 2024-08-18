@@ -59,6 +59,6 @@ printf("Raíz: %f +- %f", c,error);
 float f (float x)
 {
     float r = 0; 
-    r = -2 + 7*x -5 * pow(x,2) + 6 * pow(x,3);
+    r = -2*x + 4;
     return r;
 };
