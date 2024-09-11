@@ -27,12 +27,12 @@ float matriz[n][n]={
         1,3,9,2
     };
 
-    float xViejo[n]={
-    0,0,0,0};
+    float xViejo[n]=
+        {0,0,0,0};
 
-    float xNuevo[n]={
-        0,0,0,0
-    };
+    float xNuevo[n]=
+        {0,0,0,0};
+
 
     printf("Ingrese la tolerancia: \n");
     scanf("%f", &tolerancia);
@@ -41,12 +41,12 @@ float matriz[n][n]={
 
     //? ALGORITMO TRIANGULACION
 
-    for(i = 0; i <= n-1; i++)
+    for(i = 0; i <= 2; i++)
     {
-        for(j = i + 1; j <= n-1; j++)
+        for(j = i + 1; j <= 3; j++)
         {
             factor = matriz[j][i] / matriz[i][i];
-            for(k = i; k <= n-1; k++)
+            for(k = i; k <= 3; k++)
             {
                 matriz[j][k] = matriz[j][k] - factor * matriz[i][k];  
             }
@@ -57,7 +57,7 @@ float matriz[n][n]={
     //? ALGORITMO CHECK DETERMINANTE
 
     float prod = 1;
-    for(i = 0; i <= n-1; i++)
+    for(i = 0; i <= 3; i++)
     {
         prod = prod * matriz[i][i];
     }
@@ -70,7 +70,6 @@ float matriz[n][n]={
     }
 
     //? ALGORITMO DIAGONALMENTE DOMINANTE
-
     printf("%f,%f,%f,%f\n",matriz[0][0],matriz[0][1],matriz[0][2],matriz[0][3]);
     printf("%f,%f,%f,%f\n",matriz[1][0],matriz[1][1],matriz[1][2],matriz[1][3]);
     printf("%f,%f,%f,%f\n",matriz[2][0],matriz[2][1],matriz[2][2],matriz[2][3]);
@@ -93,45 +92,55 @@ float matriz[n][n]={
         }
         else
         {
-            printf("\nLa matriz es diagonalmente dominante. Fila: %d", counter);
+            printf("\nLa matriz es diagonalmente dominante. Fila: %d\n", counter);
         }
 	}
 
-   //////////////////////////////
+    //////////////////////////////////
     iteracion = 0;
     do
     {
+        
         iteracion++;
-        for(i=0; i<=n-1; i++)
+        for(i = 0; i<=3;i++)
         {
             suma = 0;
-            for(j = 0; j <= n-1; j++)
+            if(i == 0)
             {
-                if(j!=i)
+                for(j=1;j<=n-1;j++)
                 {
-                    suma = suma + matriz[i][j]* xViejo[j];
+                    suma = suma + matriz[i][j]*xNuevo[j];
                 }
+                xNuevo[i] = (matrizR[i]-suma)/matriz[i][i];
             }
-            xNuevo[i]= (matrizR[i]-suma)/matriz[i][i];
+            for(j = 0; j<=i-1;j++)
+            {
+                suma = suma + matriz[i][j]*xNuevo[j];
+            }
+            for(j = i+1; j<=3;j++)
+            {
+                suma = suma + matriz[i][j]*xViejo[j];
+            }
+            xNuevo[i] = (matrizR[i] - suma)/ matriz[i][i];
         }
+        
+            suma = 0;
+            for(i = 0; i<= n-1;i++)
+            {
+                suma = suma + pow((xNuevo[i]-xViejo[i]),2);
+            }
+            error = sqrt(suma);
 
-        suma = 0;
-        for(i = 0; i<= n-1;i++)
-        {
-            suma = suma + pow((xNuevo[i]-xViejo[i]),2);
-        }
-        error = sqrt(suma);
+            if(iteracion >= 2 && error>errort)
+            {
+                printf("El metodo no converge. \n");
+                exit(404);
+            }
+            errort = error;
 
-        if(iteracion >= 2 && error>errort)
-        {
-            printf("El metodo no converge. \n");
-            exit(1);
-        }
-        errort = error;
-
-        for(i = 0; i<= n-1; i++)
-        {
-            xViejo[i] = xNuevo[i];
+            for(i = 0; i<= n-1; i++)
+            {
+                xViejo[i] = xNuevo[i];
         }
     } while (error>tolerancia && iteracion <= 1000);
     printf("Matriz resultante:\n");
@@ -139,4 +148,7 @@ float matriz[n][n]={
     printf("x2: %f\n", xNuevo[1]);
     printf("x3: %f\n", xNuevo[2]);
     printf("x4: %f\n", xNuevo[3]);
+
+    printf("Error: +-%f\n", error);
+    printf("Iteraciones: %d\n", iteracion);
 }
