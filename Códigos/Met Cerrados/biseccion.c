@@ -15,7 +15,7 @@ float Xr;
 int errAbsExact;
 int errAbsAprox;
 int errPorcExact;
-int errPorcAprox;
+float errPorcAprox;
 int opcion;
 
 printf("Introduzca 'a': \n");
@@ -32,22 +32,8 @@ else
     printf("No es posible calcular la raíz.\n");
     exit(1);
 }
-printf("Introduzca la tolerancia: \n");
-scanf("%f",&tolerancia);
-//printf("Elija su tipo de error:\n 1- Error absoluto exacto.\n 2- Error absoluto aproximado.\n 3- Error porcentual exacto.\n 4- Error porcentual aproximado.");
-/*switch(opcion)
-{
-    case 1:errAbsExact = 1;
-    break; 
-    case 2:errAbsAprox = 1;
-    break;
-    case 3:errPorcExact = 1;
-    break;
-    case 4:errPorcAprox = 1;
-    break;
-};*/
-
-
+/*printf("Introduzca la tolerancia: \n");
+scanf("%f",&tolerancia);*/
 
 do
 {
@@ -69,8 +55,10 @@ do
         }
     }
     error = (b-a)/2;
-} while (error > tolerancia);
-printf("Raíz: %f +- %f", c,error);
+    errPorcAprox = error / c;
+} while (errPorcAprox > 0.001);
+printf("Raíz: %f +- %f\n", c,error);
+printf("Error aprox porc: %f ", errPorcAprox);
     return 0;
     }
 
@@ -78,6 +66,6 @@ printf("Raíz: %f +- %f", c,error);
 float f (float x)
 {
     float r = 0; 
-    r = -2 + 7*x -5*x*x+6*x*x*x;
+    r = -3.000001 + 4.233335*x -1.35*x*x+0.116667*x*x*x;
     return r;
 };
