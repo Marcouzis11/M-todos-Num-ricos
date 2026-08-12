@@ -20,8 +20,6 @@ double g(double x)
 
 void PuntoFijo()
 {
-    // acordate que tenes que inicializarlo donde quieras, va a funcionar igual. Te puede llevar +- iteraciones pero es lo mismo
-
     double xViejo; // es el punto de partida digamos
     double xNuevo;
     int contador = 0;
