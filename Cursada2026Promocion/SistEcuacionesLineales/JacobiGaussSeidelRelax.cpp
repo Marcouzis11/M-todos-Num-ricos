@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 			break;
 			
 		default: 
-			printf("\n Se seleccionó mal la opcion");
+			printf("\n Se seleccionï¿½ mal la opcion");
 	}
 	
 
@@ -99,7 +99,7 @@ void matrizB (double b[FILAS],double m[FILAS][COLUMNAS], int filas, int columnas
 }
 	
 void jacobi(double a[FILAS][COLUMNAS] , double b[FILAS] , int filas){
-	printf("\n\n***Ha seleccionado método de jacobi***\n\n");
+	printf("\n\n***Ha seleccionado mï¿½todo de jacobi***\n\n");
 	
 	bool check = diagonalmenteDominante(a,filas);
 	if(!check)
@@ -120,6 +120,7 @@ void jacobi(double a[FILAS][COLUMNAS] , double b[FILAS] , int filas){
 	}
 	
 	double error;
+	double errorViejo;
 	double tolerancia;
 	int iteraciones = 0;
 	printf("\nIngrese la tolerancia\n");
@@ -142,8 +143,20 @@ void jacobi(double a[FILAS][COLUMNAS] , double b[FILAS] , int filas){
 			suma += (xNuevo[i] - xViejo[i]) * (xNuevo[i] - xViejo[i]);
 		}
 		error = sqrt(suma);
+
+		if(iteraciones == 1){
+			errorViejo = error;
+		}
+
+		if(errorViejo < error){
+			printf("El metodo no converge, el error aumento en la iteracion %d",iteraciones);
+			exit(0);
+		}
+
+		errorViejo = error;
+
 		
-		// Reasignación del vector viejo para la próxima pasada.
+		// Reasignaciï¿½n del vector viejo para la prï¿½xima pasada.
 		for (int i = 0; i < filas; i++) {
 			xViejo[i] = xNuevo[i];
 		}
@@ -156,8 +169,9 @@ void jacobi(double a[FILAS][COLUMNAS] , double b[FILAS] , int filas){
 	
 	printf("]\n La cantidad de iteraciones fueron: %d \n El error es de %lf", iteraciones, error);
 }
+
 void gaussSeidel (double a[FILAS][COLUMNAS] , double b[FILAS], int filas){
-	printf("\n\n***Ha seleccionado método de Gauss Seidel***\n\n");
+	printf("\n\n***Ha seleccionado mï¿½todo de Gauss Seidel***\n\n");
 	
 	bool check = diagonalmenteDominante(a,filas);
 	if(!check)
@@ -212,7 +226,7 @@ void gaussSeidel (double a[FILAS][COLUMNAS] , double b[FILAS], int filas){
 		}
 		error = sqrt(suma);
 		
-		// Reasignación del vector viejo para la próxima pasada.
+		// Reasignaciï¿½n del vector viejo para la prï¿½xima pasada.
 		for (int i = 0; i < filas; i++) {
 			xViejo[i] = xNuevo[i];
 		}
@@ -227,7 +241,7 @@ void gaussSeidel (double a[FILAS][COLUMNAS] , double b[FILAS], int filas){
 }
 	
 void relajacion (double a[FILAS][COLUMNAS] , double b[FILAS], int filas){
-	printf("\n\n***Ha seleccionado método de Gauss Seidel con Coeficiente de Relajacion***\n\n");
+	printf("\n\n***Ha seleccionado mï¿½todo de Gauss Seidel con Coeficiente de Relajacion***\n\n");
 	bool check = diagonalmenteDominante(a,filas);
 	if(!check)
 		exit(0);
@@ -286,7 +300,7 @@ void relajacion (double a[FILAS][COLUMNAS] , double b[FILAS], int filas){
 		}
 		error = sqrt(suma);
 		
-		// Reasignación del vector viejo para la próxima pasada.
+		// Reasignaciï¿½n del vector viejo para la prï¿½xima pasada.
 		for (int i = 0; i < filas; i++) {
 			xViejo[i] = xNuevo[i];
 		}
@@ -300,6 +314,7 @@ void relajacion (double a[FILAS][COLUMNAS] , double b[FILAS], int filas){
 	printf("]\n La cantidad de iteraciones fueron: %d \n El error es de %lf", iteraciones, error);
 
 }
+
 bool diagonalmenteDominante(double a[FILAS][COLUMNAS], int filas){
 	double suma = 0; 
 	int counter = 0;
@@ -308,11 +323,11 @@ bool diagonalmenteDominante(double a[FILAS][COLUMNAS], int filas){
 		counter++;
 		for(int j = 0 ; j < filas ; j++){
 			if(j!=i){
-				suma+= fabs(a[i][j]);
+				suma= suma + fabs(a[i][j]);
 			}
 		}
 		
-		if(fabs(a[i][i]) < suma)
+		if(fabs(a[i][i]) <= suma)
 			printf("\nLa matriz no es diagonalmente dominante. Fila: %d",counter);
 		
 		if(a[i][i] == 0){
