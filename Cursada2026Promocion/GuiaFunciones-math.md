@@ -6,7 +6,50 @@ resultados que figuran son reales, no estimados.
 
 ---
 
-## 1. Compilar y ejecutar
+## 1. Instalar el compilador en Ubuntu
+
+Antes de compilar cualquier cosa hay que tener instalados **`gcc`** (para C) y
+**`g++`** (para C++). En Ubuntu los dos vienen en el paquete `build-essential`.
+
+```bash
+sudo apt update
+sudo apt install build-essential
+```
+
+Ese único paquete instala `gcc`, `g++`, `make` y las librerías estándar de
+desarrollo — incluida `libm`, que es la que se enlaza con `-lm` para usar `math.h`.
+
+Comprobar que quedó instalado:
+
+```bash
+gcc --version
+g++ --version
+make --version
+```
+
+Si cada comando responde con un número de versión (por ejemplo `13.3.0`), ya está
+todo listo. Si en cambio aparece `gcc: command not found`, la instalación no se
+completó: volvé a correr el `apt install`.
+
+Prueba rápida de que compila y ejecuta:
+
+```bash
+echo '#include <stdio.h>
+int main(){ printf("Hola\n"); return 0; }' > prueba.c
+gcc prueba.c -o prueba -lm && ./prueba     # imprime: Hola
+```
+
+> **Extras opcionales**
+> - `sudo apt install manpages-dev` → habilita la ayuda en la terminal: `man 3 sqrt`, `man 3 pow`.
+> - `sudo apt install gdb` → depurador, por si hay que ir paso a paso.
+>
+> Si sólo querés uno de los dos compiladores, `sudo apt install gcc` o
+> `sudo apt install g++` alcanzan, pero conviene `build-essential` porque también
+> trae `make` y los headers del sistema.
+
+---
+
+## 2. Compilar y ejecutar
 
 Siempre hay que enlazar la librería matemática con **`-lm`** (va **al final** del comando).
 
@@ -46,7 +89,7 @@ Y después basta con `make Biseccion && ./Biseccion`.
 
 ---
 
-## 2. Lo mínimo indispensable
+## 3. Lo mínimo indispensable
 
 ```c
 #include <stdio.h>
@@ -61,7 +104,7 @@ Todas las funciones de `math.h` **reciben y devuelven `double`**.
 
 ---
 
-## 3. Logaritmos
+## 4. Logaritmos
 
 | Matemática | En C | Ejemplo | Resultado |
 |---|---|---|---|
@@ -74,11 +117,11 @@ Todas las funciones de `math.h` **reciben y devuelven `double`**.
 > ⚠️ **El error más común:** en C, `log(x)` es el logaritmo **natural**, no el de base 10.
 > Si en el enunciado dice `log(x)` a secas y se refiere a base 10, tenés que escribir `log10(x)`.
 
-**Dominio:** `log(0)` da `-inf` y `log(negativo)` da `NaN`. Ver sección 9.
+**Dominio:** `log(0)` da `-inf` y `log(negativo)` da `NaN`. Ver sección 10.
 
 ---
 
-## 4. El número *e* y exponenciales
+## 5. El número *e* y exponenciales
 
 | Matemática | En C | Notas |
 |---|---|---|
@@ -100,7 +143,7 @@ return 5 * exp(-0.3 * x);  // 5·e^(-0,3x)
 
 ---
 
-## 5. Potencias y raíces
+## 6. Potencias y raíces
 
 | Matemática | En C | Resultado |
 |---|---|---|
@@ -123,7 +166,7 @@ return 5 * exp(-0.3 * x);  // 5·e^(-0,3x)
 
 ---
 
-## 6. Trigonometría
+## 7. Trigonometría
 
 Todas trabajan en **radianes**, nunca en grados.
 
@@ -158,7 +201,7 @@ return pow(sin(x), 2);    // también correcto
 
 ---
 
-## 7. Valor absoluto, redondeo y resto
+## 8. Valor absoluto, redondeo y resto
 
 | Matemática | En C | Notas |
 |---|---|---|
@@ -187,7 +230,7 @@ Esto importa mucho en los criterios de corte:
 
 ---
 
-## 8. Trampas de aritmética que dan resultados mal
+## 9. Trampas de aritmética que dan resultados mal
 
 ### División entera
 
@@ -230,7 +273,7 @@ c = (a*funcion(b) - b*funcion(a)) / (funcion(b) - funcion(a));
 
 ---
 
-## 9. Cuando la función se rompe: `NaN` e `inf`
+## 10. Cuando la función se rompe: `NaN` e `inf`
 
 Valores verificados en esta máquina:
 
@@ -271,7 +314,7 @@ if (!isfinite(funcion(a)) || !isfinite(funcion(b))) {
 
 ---
 
-## 10. Diccionario rápido: notación matemática → C
+## 11. Diccionario rápido: notación matemática → C
 
 | Se escribe así en el enunciado | Se escribe así en C |
 |---|---|
@@ -301,7 +344,7 @@ return ((((3*x - 2)*x + 0)*x + 1)*x - 7);
 
 ---
 
-## 11. Derivadas, para los métodos abiertos
+## 12. Derivadas, para los métodos abiertos
 
 Newton-Raphson necesita `f'(x)`. Dos opciones:
 
@@ -344,7 +387,7 @@ double derivada(double x) {
 
 ---
 
-## 12. Plantilla lista para copiar
+## 13. Plantilla lista para copiar
 
 ```c
 #include <stdio.h>
@@ -380,7 +423,7 @@ g++ -Wall plantilla.cpp -o plantilla -lm && ./plantilla
 
 ---
 
-## 13. Formato de impresión
+## 14. Formato de impresión
 
 | Especificador | Uso |
 |---|---|
