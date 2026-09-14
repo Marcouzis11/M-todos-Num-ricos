@@ -34,6 +34,7 @@ void PuntoFijo()
 
         contador++;
 
+        //Formula de la derivada es esto: por eso se ve raro y no g'(x) >= 1.
         if (fabs((g(xViejo + 0.01) - g(xViejo)) / 0.01) >= 1) // Derivada >= 1
         { 
 
