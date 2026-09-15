@@ -77,6 +77,11 @@ void biseccion() {
                 break;
             }
 
+            printf("ITERACIÓN %d\n:", iterator);
+            printf("c=%.10lf\n", c);
+            printf("error=%.10lf\n\n", error);
+            
+
         } while (error > tolerancia && iterator < MAX_ITER);
 
         if (iterator >= MAX_ITER) {

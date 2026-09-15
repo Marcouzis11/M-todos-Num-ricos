@@ -44,7 +44,7 @@ void NewtonRaphson(){
             xViejo = xNuevo;
         }
 
-    }while(error > tolerancia || contador < 10000 );
+    }while(error > tolerancia && contador < 10000 );
 
     printf("\n\n\nLa raiz de f es: %.10lf", xNuevo);
     printf("\nEl valor del error en la raiz es de: %.10lf", error);
