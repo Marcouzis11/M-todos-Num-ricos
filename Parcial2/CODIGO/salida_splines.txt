@@ -329,3 +329,281 @@ Valores de y:
 
 ====================================================================================
 (Tambien quedo guardado en el archivo salida_*.txt de esta carpeta.)
+
+####  INTERPOLACION SEGMENTARIA: CURVAS SPLINE   (Guia 6)  ####
+
+Todo lo que calcula queda tambien en el archivo salida_splines.txt
+
+=== CARGAR PUNTOS ===
+
+QUE SIGNIFICA CADA SIMBOLO:
+   n+1 puntos (nodos)  ->  n TRAMOS (intervalos) entre nodo y nodo
+   S_i(x) = el polinomio que vale en el tramo [x_i , x_(i+1)]
+   h_i = x_(i+1) - x_i  = ancho del tramo i
+   S''(x_i) = segunda derivada del spline en el nodo i (las incognitas del sistema)
+   NATURAL = se impone S'' = 0 en los dos extremos (el spline 'se endereza' al salir)
+   SUJETO (o condicionado) = se imponen las PENDIENTES S' en los dos extremos
+
+Idea del spline: en vez de UN polinomio de grado alto por todos los puntos
+(que oscila), se usa un polinomio de grado BAJO en cada tramo, pegados de
+manera que la curva quede suave (continua, y con derivadas continuas).
+
+Valores de x  (ORDENADOS de menor a mayor, separados por espacio): 1.00 1.20 1.45 1.78 2.00
+Valores de y = f(x)  (en el mismo orden; ENTER = calcularlos con una f(x)): -0.1483 -0.0400 0.1395 0.4493 0.7001
+Funcion EXACTA de donde salen los datos, si el enunciado la da (ENTER = no): log(x*x + 1)-sin(x)
+
+5 puntos  ->  4 tramos.  (Un polinomio interpolante unico seria de grado 4.)
+
+======================== MENU (5 puntos, 4 tramos) ========================
+
+  OPCION                          USALA SI EL ENUNCIADO DICE...
+  1) Cargar otros puntos
+  2) Spline LINEAL                'trazador lineal', 'spline de primer grado'
+  3) Spline CUADRATICO            'trazador cuadratico', 'spline de segundo grado'
+  4) Spline CUBICO                'spline cubica NORMAL', 'natural', 'trazador cubico', 'sujeto'
+  5) Evaluar en un x              'estime el valor en x = ...', 'calcule S(...)'
+  6) TABLA equiespaciada          'tabla de datos equiespaciados', 'conservando el numero de puntos'
+  7) Integral del spline          'integre usando el spline', 'area bajo la curva'
+  8) Comparar con polinomio       'compare con el polinomio', 'oscilacion', 'Runge'
+  0) Salir
+Opcion: 4
+
+=== SPLINE (TRAZADOR) CUBICO ===
+
+En cada tramo S_i es una CUBICA. Se pide que S, S' y S'' sean continuas:
+la curva queda suave de verdad. Las incognitas comodas son las segundas
+derivadas en los nodos, S''(x_i), que salen de un sistema TRIDIAGONAL.
+
+Condiciones de borde:
+  1) NATURAL  (los enunciados la llaman 'spline cubica NORMAL'):
+     se impone  S''(x0) = S''(xn) = 0.  Es la que piden casi siempre.
+  2) SUJETO (condicionado): se dan las pendientes S'(x0) y S'(xn)
+Opcion (1-2): 1
+
+=========================== TEXTO PARA COPIAR EN LA HOJA ===========================
+
+SPLINE CUBICO NATURAL (= 'normal' en los enunciados)
+
+Datos (5 puntos  ->  4 tramos):
+    i |       x_i      |       y_i      |   h_i = x_(i+1) - x_i
+    0 |     1.00000000 |    -0.14830000 |     0.20000000
+    1 |     1.20000000 |    -0.04000000 |     0.25000000
+    2 |     1.45000000 |     0.13950000 |     0.33000000
+    3 |     1.78000000 |     0.44930000 |     0.22000000
+    4 |     2.00000000 |     0.70010000 |      ---
+
+Se plantea el sistema para las segundas derivadas S''(x_i) (incognitas).
+Para cada nodo INTERIOR i = 1 .. 3:
+   h_(i-1)*S''(x_(i-1)) + 2*(h_(i-1) + h_i)*S''(x_i) + h_i*S''(x_(i+1)) =
+        6*[ (y_(i+1) - y_i)/h_i  -  (y_i - y_(i-1))/h_(i-1) ]
+
+Borde NATURAL:  S''(x0) = 0  y  S''(xn) = 0  (se sacan del sistema).
+
+Con los datos, las ecuaciones de los nodos interiores quedan:
+   i=1:  0.2*S''0 + 2*(0.2 + 0.25)*S''1 + 0.25*S''2 = 6*[ (0.139500 - -0.040000)/0.25 - (-0.040000 - -0.148300)/0.2 ]
+         0.2*S''0 + 0.9*S''1 + 0.25*S''2 = 1.0590000000
+   i=2:  0.25*S''1 + 2*(0.25 + 0.33)*S''2 + 0.33*S''3 = 6*[ (0.449300 - 0.139500)/0.33 - (0.139500 - -0.040000)/0.25 ]
+         0.25*S''1 + 1.16*S''2 + 0.33*S''3 = 1.3247272727
+   i=3:  0.33*S''2 + 2*(0.33 + 0.22)*S''3 + 0.22*S''4 = 6*[ (0.700100 - 0.449300)/0.22 - (0.449300 - 0.139500)/0.33 ]
+         0.33*S''2 + 1.1*S''3 + 0.22*S''4 = 1.2072727273
+
+Matriz TRIDIAGONAL del sistema  (incognitas S''0 .. S''4):
+   [    1.0000    0.0000    0.0000    0.0000    0.0000 |    0.000000 ]
+   [    0.2000    0.9000    0.2500    0.0000    0.0000 |    1.059000 ]
+   [    0.0000    0.2500    1.1600    0.3300    0.0000 |    1.324727 ]
+   [    0.0000    0.0000    0.3300    1.1000    0.2200 |    1.207273 ]
+   [    0.0000    0.0000    0.0000    0.0000    1.0000 |    0.000000 ]
+   (es tridiagonal: conviene resolverlo con el algoritmo de Thomas, O(n))
+
+SOLUCION del sistema (segundas derivadas en los nodos):
+   S''(x0) = S''(1) = 0.0000000000
+   S''(x1) = S''(1.2) = 0.9894247382
+   S''(x2) = S''(1.45) = 0.6740709425
+   S''(x3) = S''(1.78) = 0.8952993784
+   S''(x4) = S''(2) = 0.0000000000
+
+De las segundas derivadas se obtienen los coeficientes de cada tramo:
+   a_i = y_i                                        (el valor en el nodo)
+   b_i = (y_(i+1) - y_i)/h_i - h_i*(2*S''_i + S''_(i+1))/6     (la pendiente)
+   c_i = S''_i / 2
+   d_i = (S''_(i+1) - S''_i) / (6*h_i)
+
+    i |      a_i      |      b_i      |      c_i      |      d_i
+    1 |   -0.14830000 |    0.50851918 |    0.00000000 |    0.82452062
+    2 |   -0.04000000 |    0.60746165 |    0.49471237 |   -0.21023586
+    3 |    0.13950000 |    0.81539861 |    0.33703547 |    0.11173153
+    4 |    0.44930000 |    1.07434471 |    0.44764969 |   -0.67825710
+
+POLINOMIO DE CADA TRAMO   (forma  S_i(x) = a + b*(x - x_i) + c*(x - x_i)^2 + d*(x - x_i)^3):
+
+  Tramo 1:  1 <= x <= 1.2
+    S1(x) = -0.1483000000 + (0.5085191754)*(x - 1) + (0.0000000000)*(x - 1)^2
+            + (0.8245206152)*(x - 1)^3
+
+  Tramo 2:  1.2 <= x <= 1.45
+    S2(x) = -0.0400000000 + (0.6074616492)*(x - 1.2) + (0.4947123691)*(x - 1.2)^2
+            + (-0.2102358638)*(x - 1.2)^3
+
+  Tramo 3:  1.45 <= x <= 1.78
+    S3(x) = 0.1395000000 + (0.8153986093)*(x - 1.45) + (0.3370354713)*(x - 1.45)^2
+            + (0.1117315333)*(x - 1.45)^3
+
+  Tramo 4:  1.78 <= x <= 2
+    S4(x) = 0.4493000000 + (1.0743447123)*(x - 1.78) + (0.4476496892)*(x - 1.78)^2
+            + (-0.6782571049)*(x - 1.78)^3
+
+CONTROL (el spline tiene que pasar EXACTAMENTE por los datos):
+   S(1) = -0.1483000000     y_i = -0.1483000000     diferencia = 0.0e+00
+   S(1.2) = -0.0400000000     y_i = -0.0400000000     diferencia = 0.0e+00
+   S(1.45) = 0.1395000000     y_i = 0.1395000000     diferencia = 0.0e+00
+   S(1.78) = 0.4493000000     y_i = 0.4493000000     diferencia = 0.0e+00
+   S(2) = 0.7001000000     y_i = 0.7001000000     diferencia = 0.0e+00
+   Maxima diferencia: 0.00e+00  ->  PASA por todos los puntos (correcto)
+
+CONTINUIDAD en los nodos interiores (es lo que hace al spline 'suave'):
+   x = 1.2 :  S' izquierda = 0.60746143   S' derecha = 0.60746187   |   S'' izq = 0.989424   S'' der = 0.989424
+   x = 1.45 :  S' izquierda = 0.81539844   S' derecha = 0.81539877   |   S'' izq = 0.674071   S'' der = 0.674071
+   x = 1.78 :  S' izquierda = 1.07434446   S' derecha = 1.07434496   |   S'' izq = 0.895299   S'' der = 0.895298
+   (coinciden: el spline cubico tiene S, S' y S'' continuas)
+
+ERROR CONTRA LA FUNCION EXACTA  f(x) = log(x*x + 1)-sin(x):
+   (se mira en el MEDIO de cada tramo, que es donde el spline mas se aparta)
+   x =   1.100000 :  S(x) =  -0.0966235618   f(x) =  -0.0982148445   |error| = 1.591e-03
+   x =   1.325000 :  S(x) =   0.0432519700   f(x) =   0.0437004138   |error| = 4.484e-04
+   x =   1.615000 :  S(x) =   0.2837184733   f(x) =   0.2841927850   |error| = 4.743e-04
+   x =   1.890000 :  S(x) =   0.5719917194   f(x) =   0.5704870031   |error| = 1.505e-03
+   Error maximo en los puntos medios: 1.591e-03
+
+Verificacion del borde NATURAL: S''(x0) = 0.00e+00 y S''(xn) = 0.00e+00 (ambos cero).
+
+------------------------- QUE ESCRIBIR EN LA HOJA -------------------------
+  [ ] La tabla de datos con los h_i
+  [ ] La ecuacion generica de los nodos interiores
+  [ ] Las condiciones de borde usadas (natural o sujeto) y por que
+  [ ] El sistema tridiagonal escrito con numeros
+  [ ] La solucion S''(x_i) de cada nodo
+  [ ] Las formulas de a, b, c, d y la tabla de coeficientes
+  [ ] El polinomio de cada tramo con su intervalo de validez
+  [ ] El control: pasa por los puntos, S' y S'' continuas, borde verificado
+
+====================================================================================
+(Tambien quedo guardado en el archivo salida_*.txt de esta carpeta.)
+
+======================== MENU (5 puntos, 4 tramos) ========================
+  Spline armado: CUBICO NATURAL
+
+  OPCION                          USALA SI EL ENUNCIADO DICE...
+  1) Cargar otros puntos
+  2) Spline LINEAL                'trazador lineal', 'spline de primer grado'
+  3) Spline CUADRATICO            'trazador cuadratico', 'spline de segundo grado'
+  4) Spline CUBICO                'spline cubica NORMAL', 'natural', 'trazador cubico', 'sujeto'
+  5) Evaluar en un x              'estime el valor en x = ...', 'calcule S(...)'
+  6) TABLA equiespaciada          'tabla de datos equiespaciados', 'conservando el numero de puntos'
+  7) Integral del spline          'integre usando el spline', 'area bajo la curva'
+  8) Comparar con polinomio       'compare con el polinomio', 'oscilacion', 'Runge'
+  0) Salir
+Opcion: 6
+
+=== GENERAR TABLA EQUIESPACIADA CON EL SPLINE ===
+
+Es el paso tipico de los parciales: los datos vienen con x DESIGUALMENTE
+espaciados, y para poder usar Simpson o diferencias finitas hace falta una
+tabla con paso CONSTANTE. Se genera evaluando el spline.
+
+  1) Dar el paso h       ('genere una tabla con h = 0.1')
+  2) Dar la cantidad n   ('divida el intervalo en 10 sub-intervalos')
+Opcion (1-2): 2
+n  (cantidad de subintervalos) = 4
+
+Tabla de 5 puntos generada (esta en el texto para la hoja, lista para copiar).
+
+=========================== TEXTO PARA COPIAR EN LA HOJA ===========================
+
+TABLA EQUIESPACIADA GENERADA CON EL SPLINE CUBICO NATURAL
+Intervalo [1 , 2]   n = 4 subintervalos   h = 0.25
+
+Cada valor sale de evaluar el polinomio del tramo donde cae ese x.
+
+    i |      x_i       |     S(x_i)      |   f(x_i) exacta |  error abs.
+  ----+----------------+-----------------+-----------------+------------
+    0 |     1.00000000 |   -0.1483000000 |   -0.1483238042 |  2.380e-05
+    1 |     1.25000000 |   -0.0084164161 |   -0.0080012749 |  4.151e-04
+    2 |     1.50000000 |    0.1811264856 |    0.1811600097 |  3.352e-05
+    3 |     1.75000000 |    0.4174695266 |    0.4178126008 |  3.431e-04
+    4 |     2.00000000 |    0.7001000000 |    0.7001404856 |  4.049e-05
+
+  Error maximo del spline en la tabla: 4.151e-04
+
+--- PARA PEGAR EN OTRO PROGRAMA (integracion.exe o derivacion.exe) ---
+Valores de x:
+1 1.25 1.5 1.75 2
+Valores de y:
+-0.1483000000 -0.0084164161 0.1811264856 0.4174695266 0.7001000000
+
+(Copia esas dos lineas: en integracion.exe elegi 'tengo una TABLA' y pegalas.)
+
+------------------------- QUE ESCRIBIR EN LA HOJA -------------------------
+  [ ] Que la tabla se genero evaluando el spline en cada x equiespaciado
+  [ ] El valor de h usado
+  [ ] La tabla completa de x_i y S(x_i)
+  [ ] Los valores exactos y el error del spline en cada punto
+
+====================================================================================
+(Tambien quedo guardado en el archivo salida_*.txt de esta carpeta.)
+
+======================== MENU (5 puntos, 4 tramos) ========================
+  Spline armado: CUBICO NATURAL
+
+  OPCION                          USALA SI EL ENUNCIADO DICE...
+  1) Cargar otros puntos
+  2) Spline LINEAL                'trazador lineal', 'spline de primer grado'
+  3) Spline CUADRATICO            'trazador cuadratico', 'spline de segundo grado'
+  4) Spline CUBICO                'spline cubica NORMAL', 'natural', 'trazador cubico', 'sujeto'
+  5) Evaluar en un x              'estime el valor en x = ...', 'calcule S(...)'
+  6) TABLA equiespaciada          'tabla de datos equiespaciados', 'conservando el numero de puntos'
+  7) Integral del spline          'integre usando el spline', 'area bajo la curva'
+  8) Comparar con polinomio       'compare con el polinomio', 'oscilacion', 'Runge'
+  0) Salir
+Opcion: 7
+
+=========================== TEXTO PARA COPIAR EN LA HOJA ===========================
+
+INTEGRAL DEL SPLINE entre 1 y 2
+
+Se integra tramo por tramo y se suma. En cada tramo, con t = x - x_i y h_i:
+   integral de S_i = a_i*h_i + b_i*h_i^2/2 + c_i*h_i^3/3 + d_i*h_i^4/4
+
+    i |   desde    |   hasta    |      integral del tramo
+    1 |          1 |        1.2 |        -0.0191598082
+    2 |        1.2 |       1.45 |         0.0113544950
+    3 |       1.45 |       1.78 |         0.0948020641
+    4 |       1.78 |          2 |         0.1260367855
+
+INTEGRAL TOTAL = 0.2130335364
+
+Control con la funcion exacta f(x) = log(x*x + 1)-sin(x):
+   integral exacta (Simpson con 2000 subintervalos) = 0.2127806107
+   Error absoluto = 2.529e-04
+
+------------------------- QUE ESCRIBIR EN LA HOJA -------------------------
+  [ ] La formula de la integral de cada tramo
+  [ ] La tabla con la integral de cada tramo
+  [ ] La suma total
+
+====================================================================================
+(Tambien quedo guardado en el archivo salida_*.txt de esta carpeta.)
+
+======================== MENU (5 puntos, 4 tramos) ========================
+  Spline armado: CUBICO NATURAL
+
+  OPCION                          USALA SI EL ENUNCIADO DICE...
+  1) Cargar otros puntos
+  2) Spline LINEAL                'trazador lineal', 'spline de primer grado'
+  3) Spline CUADRATICO            'trazador cuadratico', 'spline de segundo grado'
+  4) Spline CUBICO                'spline cubica NORMAL', 'natural', 'trazador cubico', 'sujeto'
+  5) Evaluar en un x              'estime el valor en x = ...', 'calcule S(...)'
+  6) TABLA equiespaciada          'tabla de datos equiespaciados', 'conservando el numero de puntos'
+  7) Integral del spline          'integre usando el spline', 'area bajo la curva'
+  8) Comparar con polinomio       'compare con el polinomio', 'oscilacion', 'Runge'
+  0) Salir
+Opcion: 0

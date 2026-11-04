@@ -232,3 +232,95 @@ ERRORES:
 
 ====================================================================================
 (Tambien quedo guardado en el archivo salida_*.txt de esta carpeta.)
+
+############  INTEGRACION NUMERICA   (Guias 7 y 8)  ############
+
+Todo lo que calcula queda tambien en el archivo salida_integracion.txt
+
+=== CARGAR LOS DATOS ===
+  1) Tengo la FUNCION f(x)   ('integre f(x) = ... entre a y b')
+  2) Tengo una TABLA de datos ('los datos de la tabla', mediciones, no hay formula)
+Opcion (1-2): 1
+
+f(x) =  (la funcion a integrar, ej: 0.2 + 25*x - 200*x^2 + 675*x^3): (2*x)/(x*x+1)-cos(x)
+a  (limite INFERIOR de integracion) = 1
+b  (limite SUPERIOR de integracion) = 2
+Valor EXACTO de la integral, si el enunciado lo da (ENTER = no se conoce): 
+
+======================== MENU ========================
+  f(x) = (2*x)/(x*x+1)-cos(x)     a = 1 , b = 2
+
+  OPCION                          USALA SI EL ENUNCIADO DICE...
+  1) Cargar otros datos
+  2) Trapecio                     'regla del trapecio', 'trapecio simple/compuesto/multiple'
+  3) Simpson 1/3                  'Simpson', 'Simpson 1/3', 'regla de la parabola'
+  4) Simpson 3/8                  'Simpson 3/8', n multiplo de 3
+  5) Simpson 1/3 + 3/8            n IMPAR, 'combine las reglas de Simpson'
+  6) Cuadratura de Gauss          'Gauss', 'Gauss-Legendre', 'cuadratura de 2/3 puntos'
+  7) Comparar TODOS los metodos   'compare', 'cual es mas preciso', 'discuta'
+  8) Cuantos n para un error      'cuantos subintervalos', 'para que el error sea menor que'
+  9) METODO A MEDIDA              'se propone un metodo', 'implementelo', 'pseudocodigo'
+ 10) Evaluar f en un punto        para controlar una cuenta a mano
+  0) Salir
+Opcion: 6
+
+=== CUADRATURA DE GAUSS-LEGENDRE ===
+
+QUE SIGNIFICA CADA SIMBOLO:
+   t_i = nodos de Gauss, tabulados en [-1 , 1]  (NO son equiespaciados)
+   w_i = pesos de Gauss (de la tabla; no se calculan)
+   x_i = el nodo t_i llevado al intervalo [a , b] con el cambio de variable
+
+Idea: en vez de usar puntos equiespaciados, Gauss ELIGE los puntos y los pesos
+para que la formula sea exacta para polinomios del mayor grado posible.
+Con m puntos es EXACTA para polinomios de grado <= 2m - 1.
+
+Cantidad de puntos m  (1 a 6; lo habitual es 2 o 3): 2
+
+RESULTADO:  I ~ 0.8490798510   (Gauss-Legendre de 2 puntos)
+
+=========================== TEXTO PARA COPIAR EN LA HOJA ===========================
+
+CUADRATURA DE GAUSS-LEGENDRE con 2 puntos
+f(x) = (2*x)/(x*x+1)-cos(x)        a = 1 , b = 2
+
+1) CAMBIO DE VARIABLE para llevar [a , b] a [-1 , 1]:
+   x = ( (b - a)*t + (b + a) ) / 2 = ( 1*t + 3 ) / 2 = 0.5*t + 1.5
+   dx = (b - a)/2 dt = 0.5 dt
+   Entonces:  I = integral de f(x) dx entre a y b = 0.5 * integral de f(x(t)) dt entre -1 y 1
+
+2) NODOS Y PESOS de la tabla de Gauss-Legendre (2 puntos):
+    i |        t_i         |        w_i
+    1 |      -0.5773502692 |       1.0000000000
+    2 |       0.5773502692 |       1.0000000000
+
+3) SE LLEVA CADA NODO AL INTERVALO [a , b] Y SE EVALUA f:
+   t1 = -0.5773502692  ->  x1 = 0.5*(-0.5773502692) + 1.5 = 1.2113248654
+        f(x1) = (2*(1.21132))/((1.21132)*(1.21132)+1)-cos((1.21132)) = 0.6301205038
+   t2 = 0.5773502692  ->  x2 = 0.5*(0.5773502692) + 1.5 = 1.7886751346
+        f(x2) = (2*(1.78868))/((1.78868)*(1.78868)+1)-cos((1.78868)) = 1.0680391982
+
+4) SUMA PONDERADA:
+   suma w_i*f(x_i) = 1.0000000000*0.6301205038 + 1.0000000000*1.0680391982 = 1.6981597020
+   I = (b - a)/2 * suma = 0.5 * 1.6981597020 = 0.8490798510
+
+RESULTADO:  I ~ 0.8490798510
+
+EXACTITUD: con 2 puntos la formula es exacta para polinomios de grado <= 3.
+Si f es un polinomio de grado <= 3, el resultado es EXACTO (error de truncamiento cero).
+
+ERRORES:
+   El enunciado no da el valor exacto, asi que el error EXACTO no se puede calcular.
+   Se informa el error de TRUNCAMIENTO teorico de la cuadratura de Gauss (ver arriba) y, si se piden
+   dos valores de n, se puede estimar el error comparando ambos resultados.
+
+------------------------- QUE ESCRIBIR EN LA HOJA -------------------------
+  [ ] El cambio de variable x = ((b-a)t + (b+a))/2 y dx = (b-a)/2 dt
+  [ ] La tabla de nodos t_i y pesos w_i que usaste
+  [ ] El paso de cada t_i a su x_i con la cuenta
+  [ ] Los valores f(x_i) y la suma ponderada
+  [ ] La cuenta final I = (b-a)/2 * suma w_i f(x_i)
+  [ ] La exactitud: con m puntos es exacta hasta grado 2m - 1
+
+====================================================================================
+(Tambien quedo guardado en el archivo salida_*.txt de esta carpeta.)
