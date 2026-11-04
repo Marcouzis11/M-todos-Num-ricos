@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Empezá acá — Parcial 2 Métodos Numéricos</title>
+<style>
+body{font-family:Segoe UI,Arial,sans-serif;max-width:900px;margin:0 auto;padding:16px 20px 60px;color:#1d1d1f;background:#fff;line-height:1.55;font-size:15px}
+h1{font-size:26px}h2{font-size:21px;background:#2b6cb0;color:#fff;padding:6px 10px;border-radius:6px;margin-top:1.8em}
+h3{font-size:17px;color:#2c5282;margin-top:1.4em}
+code{font-family:Consolas,monospace;background:#f1f4f8;padding:1px 5px;border-radius:4px}
+table{border-collapse:collapse;margin:10px 0;width:100%}td,th{border:1px solid #cbd5e0;padding:6px 9px;text-align:left;vertical-align:top}th{background:#ebf4ff}
+.ojo{background:#fff5f5;border-left:5px solid #e53e3e;padding:10px 14px;margin:10px 0}
+.ok{background:#f0fff4;border-left:5px solid #38a169;padding:10px 14px;margin:10px 0}
+.paso{background:#ebf8ff;border-left:5px solid #3182ce;padding:10px 14px;margin:10px 0}
+</style></head><body>
+<h1>Empezá acá — Parcial 2 de Métodos Numéricos</h1>
+<p><b>Fecha del parcial: semana del 2 al 6 de noviembre de 2026</b> (en el horario de práctico). Entran las <b>guías 06 a 09</b>. Recuperatorio: semana del 9 al 13 de noviembre.</p>
+
+<div class="ojo"><b>LO QUE NO ENTRA (actualizado al 27/10):</b><br>
+• <b>Diferenciación numérica</b> (diferencias finitas, la segunda mitad de la guía 08): <b>la profe dijo que NO entra</b>. El programa <code>derivacion.exe</code> queda igual en la carpeta por las dudas, pero no estudies ese tema.<br>
+• <b>Guía 10</b> (sistemas de EDO) no está en el cronograma del parcial. <b>Pero ojo:</b> la profe sí avisó que puede tomar <b>EDO de orden superior bajada a primer orden</b> — eso está en <code>edo.exe</code> opción 11.</div>
+
+<div class="ok"><b>Lo que la profe adelantó que puede tomar:</b>
+<ol>
+<li>Primero <b>equiespaciar con spline</b> y después <b>integrar con Simpson compuesto</b>; además <b>Simpson simple a mano</b>.</li>
+<li>Una de <b>EDO</b> como la del Parcial 2022 (el método multipaso propuesto en el enunciado).</li>
+<li><b>Modificar los códigos</b> (Euler, Runge-Kutta): EDO de orden superior, bajarla a primer orden.</li>
+<li><b>Primera iteración de Euler</b> y <b>trapecio simple</b>, a mano.</li>
+</ol></div>
+
+<h2>Qué entra, tema por tema</h2>
+<table>
+<tr><th>Guía</th><th>Tema</th><th>Programa que lo resuelve</th></tr>
+<tr><td><b>06</b></td><td>Interpolación segmentaria: curvas <b>spline</b> (lineal, cuadrática, cúbica natural y sujeta)</td><td><code>splines.exe</code></td></tr>
+<tr><td><b>07</b></td><td>Integración: <b>trapecio</b> y reglas de <b>Simpson</b> (1/3 y 3/8)</td><td><code>integracion.exe</code></td></tr>
+<tr><td><b>08</b></td><td><b>Cuadraturas de Gauss</b> (Gauss-Legendre)</td><td><code>integracion.exe</code> → opción 6</td></tr>
+<tr style="opacity:.55;text-decoration:line-through"><td><b>08</b></td><td>Diferenciación numérica: diferencias finitas</td><td><code>derivacion.exe</code></td></tr>
+<tr><td><b>09</b></td><td><b>EDO</b>: Euler, Heun, Punto Medio</td><td><code>edo.exe</code></td></tr>
+<tr><td><b>09</b></td><td><b>EDO</b>: Runge-Kutta 4</td><td><code>edo.exe</code> → opción 6</td></tr>
+</table>
+
+<h2>Lo primero que tenés que hacer al sentarte en el parcial</h2>
+<div class="paso">
+<b>1.</b> Enchufá el pendrive y copiá esta carpeta al Escritorio.<br>
+<b>2.</b> Abrí <code>PROGRAMAS\integracion.exe</code> y fijate que arranque.<br>
+<b>3.</b> Si no abre: abrí <code>CODIGO\integracion.cpp</code> con <b>ZinjaI</b> y apretá <b>F9</b>. (Hay más opciones abajo.)<br>
+<b>4.</b> Poné la calculadora en <b>RADIANES</b>. Control: <code>sin(1) = 0.841471</code>.
+</div>
+
+<h2>Cómo se usan los programas</h2>
+<p>Los 4 programas nuevos funcionan igual que los del Parcial 1:</p>
+<ul>
+<li>Te piden los datos del enunciado y te muestran un <b>menú</b> con la ayuda de <i>"usala si el enunciado dice..."</i>.</li>
+<li>Hacen <b>todas las cuentas paso a paso</b>, con los números reemplazados, como se harían a mano.</li>
+<li>Al final imprimen un bloque <b>TEXTO PARA COPIAR EN LA HOJA</b> y un checklist <b>QUÉ ESCRIBIR EN LA HOJA</b>.</li>
+<li>Todo queda guardado en un archivo <code>salida_*.txt</code> en la misma carpeta, por si cerrás sin copiar.</li>
+<li>Aceptan comas o puntos decimales, y cuentas en lugar de números: <code>pi/2</code>, <code>1e-4</code>, <code>4/1.3</code>.</li>
+</ul>
+
+<h3>Lo que puede pedirse a mano y el programa igual lo hace</h3>
+<table>
+<tr><th>Si el enunciado dice...</th><th>Programa</th><th>Opción</th></tr>
+<tr><td>"primera iteración a mano" de Euler / Heun / RK4</td><td><code>edo.exe</code></td><td>2 a 6 (imprime el detalle del primer paso)</td></tr>
+<tr><td>"escriba el polinomio de cada tramo" del spline</td><td><code>splines.exe</code></td><td>4 (da el sistema tridiagonal y los coeficientes)</td></tr>
+<tr><td>"¿cuántos subintervalos para un error menor que…?"</td><td><code>integracion.exe</code></td><td>8</td></tr>
+<tr><td>"compare los métodos" / "¿cuál es más preciso?"</td><td>el del tema</td><td>la opción "comparar todos"</td></tr>
+<tr><td>"estime el error" sin dar el valor exacto</td><td><code>integracion.exe</code> / <code>edo.exe</code></td><td>error teórico con derivadas, o repetir con h/2</td></tr>
+<tr><td>"¿qué pasa si h es muy chico?"</td><td><code>derivacion.exe</code></td><td>7 (truncamiento vs redondeo)</td></tr>
+<tr><td>"grafique"</td><td><code>04_GRAFICADORA.html</code></td><td>exporta PNG para adjuntar</td></tr>
+<tr><td><b>"se propone un método… impleméntelo"</b></td><td><code>integracion.exe</code> / <code>edo.exe</code></td><td><b>9) MÉTODO A MEDIDA</b>: escribís la fórmula del enunciado y el programa la corre y te da el pseudocódigo</td></tr>
+<tr><td>"genere una tabla equiespaciada con spline"</td><td><code>splines.exe</code></td><td>6) TABLA equiespaciada</td></tr>
+<tr><td>"calcule df/dx de la tabla y después intégrela"</td><td><code>derivacion.exe</code> → <code>integracion.exe</code></td><td>4) derivar tabla, y pegar la salida</td></tr>
+<tr><td>"muestre los últimos 5 puntos" / "en intervalos de 0.2"</td><td><code>edo.exe</code></td><td>lo pregunta al cargar, cuando hay muchos pasos</td></tr>
+</table>
+
+<h2>Lo que más cae: ejercicios ENCADENADOS</h2>
+<p>En los parciales viejos casi ningún problema usa un solo tema. El camino típico es:</p>
+<div class="paso"><b>tabla desigual</b> → <code>splines.exe</code> (op. 4, después op. 6) → <b>tabla equiespaciada</b> → <code>derivacion.exe</code> (op. 4) → <b>tabla de derivadas</b> → <code>integracion.exe</code> (tabla, op. 3) → <b>integral + error</b></div>
+<p>Para que no tengas que copiar números a mano, <b><code>splines.exe</code> y <code>derivacion.exe</code> imprimen las dos líneas listas para pegar</b> en el programa siguiente (buscá el bloque <i>"PARA PEGAR EN…"</i>).</p>
+
+<h2>Cuando el enunciado inventa un método</h2>
+<p>Es lo que pidió el Segundo Parcial 2022 en dos de sus cuatro problemas: te dan una fórmula nueva y tenés que escribir el pseudocódigo e implementarla. No hace falta tocar el <code>.cpp</code>:</p>
+<ul>
+<li><b>Integración</b> (<code>integracion.exe</code> → opción 9): escribís el término de la sumatoria usando <code>xi</code>, <code>xi1</code>, <code>h</code>, <code>fi</code>, <code>fi1</code>, <code>fm</code>.<br>
+Ejemplo real del parcial 2022: <code>(xi1-xi)*fi + 0.5*(xi1-xi)*(fi1-fi)</code></li>
+<li><b>EDO</b> (<code>edo.exe</code> → opción 9): escribís lo que va en <code>y(i+1) = y(i) + h*( … )</code> usando <code>fi</code>, <code>fim1</code>, <code>fim2</code>, <code>xi</code>, <code>yi</code>, <code>h</code>.<br>
+Ejemplo real del parcial 2022: <code>2*fi - fim1</code></li>
+</ul>
+<p>Los dos imprimen el <b>pseudocódigo ya armado</b> con tu fórmula adentro, listo para copiar en la hoja, y comparan el resultado con los métodos conocidos.</p>
+<div class="ok"><b>Dato útil del 2022:</b> el "método nuevo" del Problema 2 es el <b>trapecio disfrazado</b> (si desarrollás la suma, los términos se cancelan). El programa lo detecta y te lo dice, así lo podés justificar en la hoja.</div>
+
+<h2>Si los .exe no abren en la PC de la facultad</h2>
+<div class="ojo">
+<b>Plan A:</b> si Windows avisa "Windows protegió su PC": <i>Más información</i> → <i>Ejecutar de todas formas</i>. Si no deja correr desde el pendrive, copiá la carpeta al Escritorio.<br><br>
+<b>Plan B — ZinjaI</b> (está instalado en la facultad): copiá la carpeta <code>CODIGO</code> completa al Escritorio, abrí el <code>.cpp</code> que necesites y apretá <b>F9</b>. Los archivos <code>mn_comun.h</code> y <code>mn_derivada.h</code> tienen que estar al lado del <code>.cpp</code>.<br><br>
+<b>Plan C — VS Code:</b> abrí la carpeta <code>CODIGO</code>, Terminal → Nueva terminal, y corré <code>g++ edo.cpp -o edo.exe</code>. Si no reconoce <code>g++</code>, usá el de ZinjaI con la ruta completa (suele estar en <code>C:\Program Files (x86)\ZinjaI\mingw32\bin\g++.exe</code>).<br><br>
+<b>Plan D:</b> doble clic en <code>CODIGO\compilar.bat</code>, que compila todo de una si hay g++ en el PATH.
+</div>
+
+<h2>Qué hay en esta carpeta</h2>
+<table>
+<tr><th>Archivo / carpeta</th><th>Para qué sirve</th></tr>
+<tr><td><code>PROGRAMAS\</code></td><td>Los <code>.exe</code> listos para usar: <b>splines, integracion, derivacion, edo</b> y los 4 del Parcial 1 (raices, sistemas, interpolacion, regresion)</td></tr>
+<tr><td><code>CODIGO\</code></td><td>El código fuente <code>.cpp</code> por si hay que compilar en la facultad, más <code>compilar.bat</code> y <code>compilar.sh</code></td></tr>
+<tr><td><code>04_GRAFICADORA.html</code></td><td>Graficadora offline: funciones, puntos, raíces y exportar PNG</td></tr>
+</table>
+
+<h3>Por qué están también los programas del Parcial 1</h3>
+<p>Porque varios temas nuevos los usan:</p>
+<ul>
+<li>El spline cúbico se resuelve con un <b>sistema tridiagonal</b>: <code>sistemas.exe</code> lo resuelve con Thomas o Gauss si te lo piden aparte.</li>
+<li>Comparar el spline contra el <b>polinomio interpolante</b> de grado alto: <code>interpolacion.exe</code>.</li>
+<li>Si una EDO o una integral pide hallar una raíz: <code>raices.exe</code>.</li>
+</ul>
+
+<div class="ok"><b>Estado:</b> los 4 programas nuevos están verificados contra los ejemplos del libro de la cátedra (Chapra). Trapecio, Simpson 1/3 y 3/8, Gauss-Legendre, spline cúbico natural, las 6 fórmulas de diferencias finitas, Richardson, Euler, Heun, Punto Medio y RK4 dan todos los valores del libro.</div>
+</body></html>

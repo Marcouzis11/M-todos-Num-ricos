@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cómo modificar los códigos en el parcial</title>
+<style>
+body{font-family:Segoe UI,Arial,sans-serif;max-width:940px;margin:0 auto;padding:16px 20px 60px;color:#1d1d1f;background:#fff;line-height:1.5;font-size:15px}
+h1{font-size:25px}h2{font-size:20px;background:#2b6cb0;color:#fff;padding:6px 10px;border-radius:6px;margin-top:1.8em}
+h3{font-size:17px;color:#2c5282;margin-top:1.4em;border-bottom:1px solid #cbd5e0}
+code{font-family:Consolas,monospace;background:#f1f4f8;padding:1px 5px;border-radius:4px}
+.f{font-family:Consolas,monospace;background:#f1f4f8;padding:9px 12px;margin:6px 0;white-space:pre-wrap;font-size:13px;border-radius:4px}
+.hoja{background:#fffff0;border:2px dashed #d69e2e;padding:10px 14px;margin:8px 0;font-family:Consolas,monospace;white-space:pre-wrap;font-size:13px}
+.ojo{background:#fff5f5;border-left:5px solid #e53e3e;padding:9px 13px;margin:9px 0}
+.ok{background:#f0fff4;border-left:5px solid #38a169;padding:9px 13px;margin:9px 0}
+.paso{background:#ebf8ff;border-left:5px solid #3182ce;padding:9px 13px;margin:9px 0}
+table{border-collapse:collapse;margin:8px 0;font-size:14px;width:100%}td,th{border:1px solid #cbd5e0;padding:5px 9px;text-align:left;vertical-align:top}th{background:#ebf4ff}
+.lbl{font-weight:bold;color:#975a16;margin:14px 0 2px}
+</style></head><body>
+<h1>Cuando el enunciado pide MODIFICAR el código</h1>
+<p>Es de los incisos que más se repiten: el enunciado <b>inventa un método</b> y pide dos cosas, <b>el pseudocódigo en papel</b> y <b>el resultado corriendo el programa</b>. Cayó en 2022 (dos problemas), 2024 y 2025. La profe avisó que lo puede volver a tomar.</p>
+
+<div class="ok"><b>La idea clave:</b> casi nunca hace falta reescribir el programa. Los métodos están hechos para que puedas <b>cargar la fórmula nueva desde el menú</b>. Y el programa además te <b>imprime el pseudocódigo ya armado</b> con tu fórmula adentro, que es lo que va en la hoja.</div>
+
+<h2>Los dos caminos</h2>
+<table>
+<tr><th></th><th>Camino A — opción "A MEDIDA"</th><th>Camino B — tocar el .cpp</th></tr>
+<tr><td><b>Cuándo</b></td><td>Siempre que se pueda: es más rápido y no se rompe nada</td><td>Solo si el método no entra en el molde, o si la profe exige ver el código cambiado</td></tr>
+<tr><td><b>Tiempo</b></td><td>1 minuto</td><td>5-10 minutos (hay que recompilar)</td></tr>
+<tr><td><b>Riesgo</b></td><td>Ninguno</td><td>Si no compila, perdés el ejercicio</td></tr>
+</table>
+<div class="ojo"><b>Regla de oro:</b> hacé primero el <b>camino A</b> y anotá el resultado. Si te sobra tiempo, hacés el camino B para mostrar el código. Nunca empieces por el B.</div>
+
+<h2>CAMINO A — con la opción "A MEDIDA"</h2>
+
+<h3>A.1 · Método de INTEGRACIÓN nuevo</h3>
+<p><code>integracion.exe</code> → opción <b>9</b>. Escribís el <b>término de la sumatoria</b>, o sea lo que va adentro de <code>I = Σ [ ... ]</code>, usando estas variables:</p>
+<div class="f">xi  = x_i          xi1 = x_(i+1)        h  = x_(i+1) - x_i
+fi  = f(x_i)       fi1 = f(x_(i+1))     fm = f del punto medio
+i   = número de subintervalo              n  = cantidad total</div>
+<p><b>Ejemplo real (Parcial 2022, Problema 2).</b> El enunciado da:</p>
+<div class="f">I = Σ(x_(i+1) − x_i)·f(x_i) + ½·Σ(x_(i+1) − x_i)·(f(x_(i+1)) − f(x_i))</div>
+<p>Se escribe <b>igual que está</b>, cambiando los símbolos por los nombres:</p>
+<div class="f">(xi1-xi)*fi + 0.5*(xi1-xi)*(fi1-fi)</div>
+
+<h3>A.2 · Método de EDO nuevo (multipaso)</h3>
+<p><code>edo.exe</code> → opción <b>9</b>. Escribís lo que va dentro del paréntesis en <code>y(i+1) = y(i) + h·( … )</code>:</p>
+<div class="f">fi   = f(x_i , y_i)            fim1 = f(x_(i−1) , y_(i−1))
+fim2 = f(x_(i−2) , y_(i−2))    xi , yi = valores actuales      h = paso</div>
+<p><b>Ejemplo real (Parciales 2022 y 2024).</b> El enunciado da <code>y(i+1) = y(i) + h(2f(x_i,y_i) − f(x_(i−1),y_(i−1)))</code>, entonces escribís:</p>
+<div class="f">2*fi - fim1</div>
+<p>Después te pregunta con qué arrancar (el enunciado suele decir "para i = 1 se podría usar Euler"): elegís <b>1) Euler</b>.</p>
+
+<h3>A.3 · Otro esquema de RUNGE-KUTTA</h3>
+<p><code>edo.exe</code> → opción <b>10</b>. El <b>RK4 3/8</b> del Parcial 2025 ya está en la lista (opción 2). Si te dan otro, elegís <b>6) escribir los coeficientes a mano</b> y los cargás del esquema general:</p>
+<div class="f">k1 = f(xi , yi)
+k2 = f(xi + a2·h , yi + b21·h·k1)
+k3 = f(xi + a3·h , yi + b31·h·k1 + b32·h·k2)
+k4 = f(xi + a4·h , yi + b41·h·k1 + b42·h·k2 + b43·h·k3)
+y(i+1) = y(i) + h·( w1·k1 + w2·k2 + w3·k3 + w4·k4 )</div>
+<p>Para leer los coeficientes del enunciado: lo que acompaña a <code>h</code> en el primer argumento es la <b>a</b>, y lo que acompaña a cada <code>h·k</code> en el segundo argumento es la <b>b</b>. Ejemplo del 2025:</p>
+<div class="f">k3 = f(xi + (2/3)h , yi − (1/3)h·k1 + h·k2)
+      →  a3 = 2/3 ,  b31 = −1/3 ,  b32 = 1</div>
+<p>Podés escribir fracciones directamente: <code>2/3</code>, <code>-1/3</code>, <code>3/8</code>.</p>
+<div class="ok"><b>Control que conviene hacer y escribir:</b> los pesos tienen que sumar 1. Si no suman 1, el método no es consistente y copiaste mal algún número. El programa te lo calcula.</div>
+
+<h3>A.4 · EDO de ORDEN SUPERIOR (bajar a primer orden)</h3>
+<p><code>edo.exe</code> → opción <b>11</b>. Escribís y'' <b>despejada</b>, usando <code>yp</code> donde dice y'. Ejemplo: <code>y'' + 2y' + 5y = 0</code> se escribe <code>-2*yp - 5*y</code>. El programa hace el cambio de variable, lo explica y resuelve con Euler o RK4.</p>
+
+<h2>CAMINO B — modificar el .cpp de verdad</h2>
+<p>Copiá la carpeta <code>CODIGO</code> al Escritorio. Abrí el <code>.cpp</code> con <b>ZinjaI</b> y apretá <b>F9</b> para compilar y correr.</p>
+
+<h3>B.1 · Dónde está el corazón de cada programa</h3>
+<table>
+<tr><th>Si te piden cambiar…</th><th>Archivo</th><th>Función que hay que tocar</th></tr>
+<tr><td>El método de integración</td><td><code>integracion.cpp</code></td><td><code>calc_trapecio</code> / <code>calc_simpson13</code> / <code>calc_simpson38</code></td></tr>
+<tr><td>El método de EDO (un paso)</td><td><code>edo.cpp</code></td><td><code>paso(...)</code> — están todos ahí dentro del <code>switch</code></td></tr>
+<tr><td>El esquema de Runge-Kutta</td><td><code>edo.cpp</code></td><td><code>paso_rk(...)</code> y los coeficientes <code>CA</code>, <code>CB</code>, <code>CW</code></td></tr>
+<tr><td>El spline</td><td><code>splines.cpp</code></td><td><code>op_cubico(...)</code></td></tr>
+</table>
+
+<h3>B.2 · Ejemplo: agregar un método de integración</h3>
+<p>En <code>integracion.cpp</code>, el trapecio compuesto es así de corto:</p>
+<div class="f">static double calc_trapecio(int n, double *xs, double *fs) {
+    double h = (xs[n] - xs[0]) / n, s = fs[0] + fs[n];
+    for (int i = 1; i &lt; n; i++) s += 2 * fs[i];
+    return h / 2 * s;
+}</div>
+<p>Para el método del Parcial 2022 alcanza con copiar esa función debajo, cambiarle el nombre y poner la fórmula nueva:</p>
+<div class="f">static double calc_propuesto(int n, double *xs, double *fs) {
+    double I = 0;
+    for (int i = 0; i &lt; n; i++) {
+        double hi = xs[i+1] - xs[i];
+        I += hi * fs[i] + 0.5 * hi * (fs[i+1] - fs[i]);
+    }
+    return I;
+}</div>
+
+<h3>B.3 · Ejemplo: agregar un método de EDO</h3>
+<p>En <code>edo.cpp</code>, dentro de <code>paso(...)</code>, cada método es un <code>case</code>. Euler es:</p>
+<div class="f">case 0:
+    *phi = k1;
+    return y + k1 * h;</div>
+<p>Un método nuevo de un solo paso se agrega como un <code>case</code> más. Para uno <b>multipaso</b> no alcanza con <code>paso()</code>, porque hace falta el valor anterior: ahí conviene el camino A.</p>
+
+<h2>Qué escribir en la hoja (sirve para cualquiera de los dos caminos)</h2>
+<p class="lbl">✍ Estructura de la respuesta:</p>
+<div class="hoja">a) PSEUDOCÓDIGO
+
+   (copiar el que imprime el programa; ya viene con la fórmula adentro)
+
+   ALGORITMO MetodoMultipasoPropuesto
+   ENTRADA: f, x0, y0, h, n
+   SALIDA:  tabla de (x_i , y_i)
+   1   x[0] <- x0 ;  y[0] <- y0
+   2   f[0] <- f(x[0], y[0])
+   3   // primer paso con un metodo de un solo paso (EULER)
+   4   y[1] <- y[0] + h*f[0]
+   5   x[1] <- x[0] + h ;  f[1] <- f(x[1], y[1])
+   6   PARA i = 1 HASTA n-1 HACER
+   7       y[i+1] <- y[i] + h * ( 2*fi - fim1 )
+   8       x[i+1] <- x[i] + h
+   9       f[i+1] <- f(x[i+1], y[i+1])
+   10  FIN PARA
+   11  DEVOLVER la tabla
+
+b) POR QUÉ HACE FALTA ARRANCAR CON OTRO MÉTODO
+
+   Es un método MULTIPASO: para calcular y(i+1) necesita y(i) e y(i-1).
+   En el primer paso todavía no existe el valor anterior, así que y1 se
+   calcula con un método de un solo paso (Euler, como indica el enunciado).
+
+c) LAS PRIMERAS DOS ITERACIONES CON NÚMEROS
+
+   (las imprime el programa: f(x0,y0), y1 por Euler, después f(x1,y1) y y2)
+
+d) LA TABLA Y EL RESULTADO PEDIDO, con la cantidad de decimales que piden
+
+e) EL ERROR, si dan la solución exacta</div>
+
+<div class="ojo"><b>No te olvides de la captura.</b> Casi siempre piden "adjunte captura de pantalla <b>completa</b> de la consola". Sacala con la ventana entera, no recortada.</div>
+
+<h2>Orden en que conviene hacerlo en el parcial</h2>
+<div class="paso">
+<b>1.</b> Leé la fórmula del enunciado y traducila a los nombres de variables (<code>fi</code>, <code>fim1</code>, <code>xi1</code>…).<br>
+<b>2.</b> Corré la opción A MEDIDA y <b>anotá el resultado enseguida</b>, antes de ponerte a escribir.<br>
+<b>3.</b> Copiá el pseudocódigo que imprimió.<br>
+<b>4.</b> Copiá las primeras iteraciones y la tabla.<br>
+<b>5.</b> Sacá la captura.<br>
+<b>6.</b> Si sobra tiempo: abrí el <code>.cpp</code>, hacé el cambio y mostralo.
+</div>
+</body></html>

@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Graficadora — Métodos Numéricos</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Segoe UI,Arial,sans-serif;margin:0;padding:12px 16px 40px;background:#f7f8fa;color:#1d1d1f;font-size:14px}
+h1{font-size:20px;margin:4px 0 10px}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:14px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid #d9dee5;border-radius:8px;padding:12px}
+.fila{display:flex;align-items:center;gap:6px;margin:6px 0;flex-wrap:wrap}
+.fila input[type=text]{flex:1;min-width:120px;font-family:Consolas,monospace;font-size:14px;padding:5px 6px;border:1px solid #c3cad4;border-radius:5px}
+input.corto{width:70px!important;flex:none!important;min-width:0!important}
+.sw{display:inline-block;width:14px;height:14px;border-radius:3px}
+.err{color:#c53030;font-size:12px;width:100%}
+button,select{font-size:14px;padding:6px 10px;border:1px solid #9fb0c4;border-radius:6px;background:#edf2f7;cursor:pointer}
+button.prim{background:#2b6cb0;color:#fff;border-color:#2b6cb0}
+h2{font-size:14px;margin:14px 0 4px;color:#2c5282;border-top:1px solid #e2e8f0;padding-top:10px}
+#lienzo{background:#fff;border:1px solid #d9dee5;border-radius:8px;padding:6px}
+canvas{width:100%;display:block;cursor:crosshair;touch-action:none}
+#info{font-family:Consolas,monospace;font-size:13px;min-height:20px;margin:4px 2px;color:#333}
+#salida{font-family:Consolas,monospace;font-size:13px;white-space:pre-wrap;background:#f1f4f8;border-radius:6px;padding:8px;margin-top:6px;min-height:34px}
+.ayuda{background:#fff;border:1px solid #d9dee5;border-radius:8px;padding:10px 14px;margin-top:14px;line-height:1.5}
+code{font-family:Consolas,monospace;background:#f1f4f8;padding:1px 4px;border-radius:4px}
+</style></head><body>
+<h1>Graficadora (funciona sin internet)</h1>
+<div class="grid">
+<div class="panel">
+  <div class="fila"><input type="checkbox" id="on0" checked><span class="sw" style="background:#2563eb"></span><b>f1(x) =</b><input type="text" id="f0" value="(x+1)/(x+4) - 0.25*x"><div class="err" id="e0"></div></div>
+  <div class="fila"><input type="checkbox" id="on1" checked><span class="sw" style="background:#dc2626"></span><b>f2(x) =</b><input type="text" id="f1" value=""><div class="err" id="e1"></div></div>
+  <div class="fila"><input type="checkbox" id="on2" checked><span class="sw" style="background:#16a34a"></span><b>f3(x) =</b><input type="text" id="f2" value=""><div class="err" id="e2"></div></div>
+
+  <div class="fila">x desde <input type="text" class="corto" id="xmin" value="-1"> hasta <input type="text" class="corto" id="xmax" value="5"></div>
+  <div class="fila">y desde <input type="text" class="corto" id="ymin" value=""> hasta <input type="text" class="corto" id="ymax" value=""> <small>(vacío = automático)</small></div>
+
+  <h2>Puntos de una tabla (opcional)</h2>
+  <div class="fila">x: <input type="text" id="px" placeholder="1 3 5 7 13"></div>
+  <div class="fila">y: <input type="text" id="py" placeholder="800 2310 3090 3940 4755"><div class="err" id="ep"></div></div>
+
+  <div class="fila" style="margin-top:10px"><button class="prim" id="bGraf">Graficar</button><button id="bRaices">Raíces de f1</button><button id="bCruce">Cruces f1 = f2</button></div>
+  <div class="fila"><button id="bPng">Guardar imagen PNG (para adjuntar)</button></div>
+
+  <h2>Evaluar</h2>
+  <div class="fila">x = <input type="text" class="corto" id="xe" value="1"> <button id="bEval">Calcular f1, f2, f3</button></div>
+
+  <h2>Ejemplos de parciales</h2>
+  <div class="fila"><select id="ejemplos" style="width:100%">
+    <option value="">— elegí un ejemplo —</option>
+    <option value="p25">2025 P1: raíz de (x+1)/(x+4) − 0.25x</option>
+    <option value="p24">2024 P1: raíz de ln(x²+1) − sin x</option>
+    <option value="p16">2016 P1: raíz de 2x + ln x − sin 3x</option>
+    <option value="pf">Punto fijo: cruce de y = x con g(x)</option>
+    <option value="int">2025 P4: puntos + cúbica local</option>
+    <option value="reg">2025 P3: puntos + a·sin x + b·cos x</option>
+    <option value="reg2">2024 P2: puntos + recta y parábola</option>
+  </select></div>
+
+  <div id="salida">Resultados acá.</div>
+</div>
+
+<div>
+  <div id="lienzo"><canvas id="c"></canvas></div>
+  <div id="info">Mové el mouse sobre el gráfico. Rueda = zoom. Arrastrar = mover.</div>
+  <div class="ayuda">
+    <b>Cómo escribir:</b> <code>(x+1)/(x+4) - 0.25*x</code> · <code>ln(x^2+1) - sin(x)</code> · <code>exp(-x)</code> · <code>sqrt(x)</code> · <code>abs(x)</code> · <code>pi</code>. <code>log</code> = <code>ln</code> (natural). Ángulos en <b>radianes</b>. <code>2x</code> vale como <code>2*x</code>.<br>
+    <b>Qué mirar:</b>
+    <ul style="margin:4px 0">
+      <li><b>Raíz</b> = donde la curva <b>cruza el eje x</b> (la línea horizontal y = 0). Sirve para elegir el intervalo [xl, xu] de bisección o el x0 de Newton: si en xl la curva está arriba y en xu abajo, hay raíz entre los dos.</li>
+      <li><b>Punto fijo</b> x = g(x): poné f1 = <code>x</code> y f2 = g(x). La solución es donde se cruzan. Converge si cerca del cruce g está "más acostada" que la recta y = x (|g'| &lt; 1).</li>
+      <li><b>Interpolación</b>: la curva tiene que pasar <b>por todos</b> los puntos. <b>Regresión</b>: pasa <b>cerca</b> de los puntos, no por ellos.</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<script>
+// PARSER-START
+function compilar(src) {
+  var s = String(src).replace(/,/g, '.').toLowerCase();
+  var i = 0;
+  var FN = {sin: Math.sin, sen: Math.sin, cos: Math.cos, tan: Math.tan, tg: Math.tan, asin: Math.asin, arcsin: Math.asin,
+    acos: Math.acos, arccos: Math.acos, atan: Math.atan, arctan: Math.atan, sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh,
+    exp: Math.exp, ln: Math.log, log: Math.log, log10: Math.log10, sqrt: Math.sqrt, raiz: Math.sqrt, abs: Math.abs};
+  function sp() { while (i < s.length && /\s/.test(s[i])) i++; }
+  function fail(m) { throw new Error(m); }
+  function prim() {
+    sp();
+    var c = s[i];
+    if (c === '(') {
+      i++; var e = expr(); sp();
+      if (s[i] !== ')') fail('Falta cerrar un paréntesis');
+      i++; return e;
+    }
+    if (c !== undefined && /[0-9.]/.test(c)) {
+      var m = /^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?/.exec(s.slice(i));
+      if (!m) fail('Número inválido');
+      i += m[0].length;
+      var v = parseFloat(m[0]);
+      return function () { return v; };
+    }
+    if (c !== undefined && /[a-z]/.test(c)) {
+      var name = /^[a-z][a-z0-9]*/.exec(s.slice(i))[0];
+      i += name.length;
+      if (name === 'x') return function (x) { return x; };
+      if (name === 'pi') return function () { return Math.PI; };
+      if (name === 'e') return function () { return Math.E; };
+      var f = FN[name];
+      if (!f) fail('No conozco "' + name + '"');
+      sp();
+      if (s[i] !== '(') fail('Después de ' + name + ' va un paréntesis: ' + name + '(x)');
+      i++; var a = expr(); sp();
+      if (s[i] !== ')') fail('Falta cerrar un paréntesis');
+      i++;
+      return function (x) { return f(a(x)); };
+    }
+    fail(c === undefined ? 'La expresión está incompleta' : 'No entiendo "' + c + '"');
+  }
+  function pot() {
+    var b = prim(); sp();
+    if (s[i] === '^') { i++; var e = unario(); return function (x) { return Math.pow(b(x), e(x)); }; }
+    return b;
+  }
+  function unario() {
+    sp();
+    if (s[i] === '-') { i++; var u = unario(); return function (x) { return -u(x); }; }
+    if (s[i] === '+') { i++; return unario(); }
+    return pot();
+  }
+  function term() {
+    var v = unario();
+    for (;;) {
+      sp();
+      var c = s[i], a = v, b;
+      if (c === '*') { i++; b = unario(); v = (function (a, b) { return function (x) { return a(x) * b(x); }; })(a, b); }
+      else if (c === '/') { i++; b = unario(); v = (function (a, b) { return function (x) { return a(x) / b(x); }; })(a, b); }
+      else if (c === '(' || (c !== undefined && /[a-z]/.test(c))) { b = unario(); v = (function (a, b) { return function (x) { return a(x) * b(x); }; })(a, b); }
+      else return v;
+    }
+  }
+  function expr() {
+    var v = term();
+    for (;;) {
+      sp();
+      var c = s[i], a = v, b;
+      if (c === '+') { i++; b = term(); v = (function (a, b) { return function (x) { return a(x) + b(x); }; })(a, b); }
+      else if (c === '-') { i++; b = term(); v = (function (a, b) { return function (x) { return a(x) - b(x); }; })(a, b); }
+      else return v;
+    }
+  }
+  if (!s.trim()) fail('vacío');
+  var r = expr(); sp();
+  if (i < s.length) fail('Sobra "' + s.slice(i) + '" (¿falta un * o un paréntesis?)');
+  return r;
+}
+function listaNumeros(txt) {
+  var t = String(txt).trim();
+  if (!t) return [];
+  return t.split(/[\s;]+/).map(function (p) { return compilar(p)(0); });
+}
+function biseccion(h, a, b) {
+  var fa = h(a);
+  for (var k = 0; k < 200; k++) {
+    var m = 0.5 * (a + b), fm = h(m);
+    if (fa * fm <= 0) b = m; else { a = m; fa = fm; }
+  }
+  return 0.5 * (a + b);
+}
+function buscarCeros(h, x0, x1, N) {
+  var res = [], xa = x0, ya = h(xa);
+  for (var k = 1; k <= N; k++) {
+    var xb = x0 + (x1 - x0) * k / N, yb = h(xb);
+    if (isFinite(ya) && isFinite(yb)) {
+      if (ya === 0) res.push(xa);
+      else if (ya * yb < 0) {
+        var r = biseccion(h, xa, xb), escala = Math.max(Math.abs(ya), Math.abs(yb), 1e-12);
+        if (Math.abs(h(r)) <= escala) res.push(r);      // si |h| no baja es una asintota, no una raiz
+      }
+    }
+    xa = xb; ya = yb;
+  }
+  return res;
+}
+// PARSER-END
+
+var COL = ['#2563eb', '#dc2626', '#16a34a'];
+var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+var view = {xmin: -1, xmax: 5, ymin: -1, ymax: 1};
+var funcs = [null, null, null], puntos = [], marcas = [];
+function $(id) { return document.getElementById(id); }
+
+function numero(id) {
+  var v = String($(id).value).trim();
+  if (!v) return null;
+  try { var r = compilar(v)(0); return isFinite(r) ? r : null; } catch (e) { return null; }
+}
+
+function leer() {
+  for (var k = 0; k < 3; k++) {
+    var t = $('f' + k).value;
+    $('e' + k).textContent = '';
+    funcs[k] = null;
+    if (!t.trim() || !$('on' + k).checked) continue;
+    try { funcs[k] = compilar(t); } catch (e) { $('e' + k).textContent = 'No entiendo la función: ' + e.message; }
+  }
+  $('ep').textContent = '';
+  puntos = [];
+  try {
+    var xs = listaNumeros($('px').value), ys = listaNumeros($('py').value);
+    if (xs.length !== ys.length) $('ep').textContent = 'Hay ' + xs.length + ' valores de x y ' + ys.length + ' de y.';
+    for (var i = 0; i < Math.min(xs.length, ys.length); i++) puntos.push([xs[i], ys[i]]);
+  } catch (e) { $('ep').textContent = 'Escribí los números separados por espacio.'; }
+}
+
+function autoY() {
+  var vals = [];
+  for (var k = 0; k < 3; k++) {
+    if (!funcs[k]) continue;
+    for (var j = 0; j <= 400; j++) {
+      var x = view.xmin + (view.xmax - view.xmin) * j / 400, y = funcs[k](x);
+      if (isFinite(y)) vals.push(y);
+    }
+  }
+  puntos.forEach(function (p) { if (p[0] >= view.xmin && p[0] <= view.xmax) vals.push(p[1]); });
+  if (!vals.length) { view.ymin = -1; view.ymax = 1; return; }
+  vals.sort(function (a, b) { return a - b; });
+  var lo = vals[Math.floor(vals.length * 0.02)], hi = vals[Math.ceil(vals.length * 0.98) - 1];
+  lo = Math.min(lo, 0); hi = Math.max(hi, 0);
+  if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+  var pad = (hi - lo) * 0.1;
+  view.ymin = lo - pad; view.ymax = hi + pad;
+}
+
+function paso(r) {
+  var p = Math.pow(10, Math.floor(Math.log10(r))), m = r / p;
+  return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p;
+}
+function fmt(v) {
+  if (v === 0) return '0';
+  var a = Math.abs(v);
+  return (a >= 1e5 || a < 1e-3) ? v.toExponential(2) : String(Math.round(v * 1e6) / 1e6);
+}
+
+function dibujar() {
+  var dpr = window.devicePixelRatio || 1;
+  var W = cv.clientWidth, H = Math.max(320, Math.min(620, Math.round(W * 0.68)));
+  cv.style.height = H + 'px';
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  var X = function (x) { return (x - view.xmin) / (view.xmax - view.xmin) * W; };
+  var Y = function (y) { return H - (y - view.ymin) / (view.ymax - view.ymin) * H; };
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  ctx.font = '11px Segoe UI, Arial'; ctx.lineWidth = 1;
+  var sx = paso((view.xmax - view.xmin) / 10), sy = paso((view.ymax - view.ymin) / 8), v;
+  for (v = Math.ceil(view.xmin / sx) * sx; v <= view.xmax; v += sx) {
+    ctx.strokeStyle = '#e8ecf1'; ctx.beginPath(); ctx.moveTo(X(v), 0); ctx.lineTo(X(v), H); ctx.stroke();
+    ctx.fillStyle = '#667'; ctx.fillText(fmt(Math.abs(v) < sx * 1e-9 ? 0 : v), X(v) + 2, Math.min(H - 4, Math.max(12, Y(0) + 12)));
+  }
+  for (v = Math.ceil(view.ymin / sy) * sy; v <= view.ymax; v += sy) {
+    ctx.strokeStyle = '#e8ecf1'; ctx.beginPath(); ctx.moveTo(0, Y(v)); ctx.lineTo(W, Y(v)); ctx.stroke();
+    if (Math.abs(v) > sy * 1e-9) { ctx.fillStyle = '#667'; ctx.fillText(fmt(v), Math.min(W - 40, Math.max(2, X(0) + 3)), Y(v) - 2); }
+  }
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
+  if (view.ymin < 0 && view.ymax > 0) { ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(W, Y(0)); ctx.stroke(); }
+  if (view.xmin < 0 && view.xmax > 0) { ctx.beginPath(); ctx.moveTo(X(0), 0); ctx.lineTo(X(0), H); ctx.stroke(); }
+
+  ctx.lineWidth = 2.2;
+  for (var k = 0; k < 3; k++) {
+    if (!funcs[k]) continue;
+    ctx.strokeStyle = COL[k]; ctx.beginPath();
+    var prev = null, N = Math.round(W * 1.5);
+    for (var j = 0; j <= N; j++) {
+      var x = view.xmin + (view.xmax - view.xmin) * j / N, y = funcs[k](x), py = Y(y);
+      if (isFinite(y) && Math.abs(py) < 1e6) {
+        if (prev !== null && Math.abs(py - prev) < H * 1.5) ctx.lineTo(X(x), py); else ctx.moveTo(X(x), py);
+        prev = py;
+      } else prev = null;
+    }
+    ctx.stroke();
+  }
+  puntos.forEach(function (p) {
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 4.5, 0, 2 * Math.PI); ctx.fill();
+  });
+  marcas.forEach(function (m) {
+    ctx.strokeStyle = '#d97706'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X(m[0]), Y(m[1]), 7, 0, 2 * Math.PI); ctx.stroke();
+    ctx.fillStyle = '#b45309'; ctx.font = 'bold 12px Segoe UI, Arial'; ctx.fillText('x = ' + m[0].toFixed(6), X(m[0]) + 9, Y(m[1]) - 9);
+  });
+}
+
+function graficar(autoRango) {
+  leer();
+  marcas = [];
+  var a = numero('xmin'), b = numero('xmax');
+  if (a === null || b === null || b <= a) { $('salida').textContent = 'Revisá el rango de x: "desde" tiene que ser menor que "hasta".'; return; }
+  view.xmin = a; view.xmax = b;
+  var c = numero('ymin'), d = numero('ymax');
+  if (c !== null && d !== null && d > c) { view.ymin = c; view.ymax = d; } else if (autoRango !== false) autoY();
+  dibujar();
+}
+
+function sincronizarRango() {
+  $('xmin').value = +view.xmin.toPrecision(6); $('xmax').value = +view.xmax.toPrecision(6);
+  $('ymin').value = ''; $('ymax').value = '';
+}
+
+$('bGraf').onclick = function () { graficar(); $('salida').textContent = 'Graficado.'; };
+
+$('bPng').onclick = function () {
+  graficar();
+  try {
+    var a = document.createElement('a');
+    a.download = 'grafico.png';
+    a.href = cv.toDataURL('image/png');
+    a.click();
+    $('salida').textContent = 'Listo: se descargó grafico.png (buscalo en la carpeta Descargas). Ese archivo es el que subís al aula virtual.';
+  } catch (e) {
+    $('salida').textContent = 'No se pudo descargar. Sacá una captura con la tecla Windows + Shift + S y pegala en Paint.';
+  }
+};
+
+$('bRaices').onclick = function () {
+  graficar();
+  if (!funcs[0]) { $('salida').textContent = 'Escribí f1(x) primero.'; return; }
+  var r = buscarCeros(funcs[0], view.xmin, view.xmax, 4000);
+  marcas = r.map(function (x) { return [x, 0]; });
+  dibujar();
+  $('salida').textContent = r.length
+    ? 'Raíces de f1 entre ' + view.xmin + ' y ' + view.xmax + ':\n' + r.map(function (x) { return '  x = ' + x.toFixed(10) + '    f1(x) = ' + funcs[0](x).toExponential(2); }).join('\n') +
+      '\n(Para bisección elegí un intervalo [xl, xu] que encierre una sola de estas raíces.)'
+    : 'f1 no cruza el eje x entre ' + view.xmin + ' y ' + view.xmax + '. Probá ampliar el rango de x.';
+};
+
+$('bCruce').onclick = function () {
+  graficar();
+  if (!funcs[0] || !funcs[1]) { $('salida').textContent = 'Escribí f1 y f2.'; return; }
+  var h = function (x) { return funcs[0](x) - funcs[1](x); };
+  var r = buscarCeros(h, view.xmin, view.xmax, 4000);
+  marcas = r.map(function (x) { return [x, funcs[0](x)]; });
+  dibujar();
+  $('salida').textContent = r.length
+    ? 'f1 = f2 en:\n' + r.map(function (x) { return '  x = ' + x.toFixed(10) + '    y = ' + funcs[0](x).toFixed(10); }).join('\n')
+    : 'f1 y f2 no se cruzan en el rango de x.';
+};
+
+$('bEval').onclick = function () {
+  leer();
+  var x = numero('xe');
+  if (x === null) { $('salida').textContent = 'Escribí un número en x.'; return; }
+  var txt = [];
+  for (var k = 0; k < 3; k++) if (funcs[k]) txt.push('f' + (k + 1) + '(' + x + ') = ' + funcs[k](x).toFixed(10));
+  $('salida').textContent = txt.length ? txt.join('\n') : 'No hay funciones escritas.';
+};
+
+var EJ = {
+  p25: {f: ['(x+1)/(x+4) - 0.25*x', '', ''], x: [-1, 5], msg: 'Cruza el eje x en x = 2. Entre 1.75 (arriba) y 3.2 (abajo) hay cambio de signo → bisección válida.'},
+  p24: {f: ['ln(x^2+1) - sin(x)', '', ''], x: [-1, 3], msg: 'Tiene DOS raíces: x = 0 y x ≈ 1.262. En [1, 2] está solo la segunda.'},
+  p16: {f: ['2x + ln(x) - sin(3x)', '', ''], x: [0.05, 2], msg: 'Una raíz cerca de 0.66. Cerca de 0, ln(x) se va a −infinito.'},
+  pf: {f: ['x', 'x - (ln(x^2+1) - sin(x))/0.67', 'asin(ln(x^2+1))'], x: [0, 2], msg: 'Rojo: g buena (casi horizontal en el cruce → converge). Verde: g mala (muy empinada en x ≈ 1.26 → diverge). Tocá "Cruces f1 = f2".'},
+  int: {f: ['1742.65625 + 1.2395833*x + 76.09375*x^2 - 4.4895833*x^3', '', ''], x: [0, 14], px: '1 3 5 7 13', py: '800 2310 3090 3940 4755',
+    msg: 'La cúbica local usa t = 3, 5, 7, 13: pasa EXACTO por esos 4 puntos y no por t = 1 (que no usó).'},
+  reg: {f: ['1.0007923964*sin(x) - 1.9915083520*cos(x)', '', ''], x: [0.8, 3.2], px: '1 1.2 1.5 2 2.6 2.9 3', py: '-0.236 0.209 0.853 1.746 2.231 2.163 2.110',
+    msg: 'Regresión: la curva pasa CERCA de los puntos (r² = 0.99996), no exactamente por ellos.'},
+  reg2: {f: ['-1.0387753067 + 0.8464263804*x', '-0.2422367849 - 0.2841332100*x + 0.3777899459*x^2', ''], x: [0.9, 2.1], px: '1 1.2 1.5 1.75 2', py: '-0.148 -0.040 0.181 0.419 0.700',
+    msg: 'Azul: recta (r² = 0.984). Roja: parábola (r² = 0.99999). La parábola sigue mejor la curvatura de los puntos.'}
+};
+$('ejemplos').onchange = function () {
+  var e = EJ[this.value];
+  if (!e) return;
+  for (var k = 0; k < 3; k++) { $('f' + k).value = e.f[k]; $('on' + k).checked = true; }
+  $('xmin').value = e.x[0]; $('xmax').value = e.x[1]; $('ymin').value = ''; $('ymax').value = '';
+  $('px').value = e.px || ''; $('py').value = e.py || '';
+  graficar();
+  $('salida').textContent = e.msg;
+};
+
+// Mouse: coordenadas, zoom con rueda, arrastrar para mover
+var arrastre = null;
+function aMundo(ev) {
+  var r = cv.getBoundingClientRect();
+  return {x: view.xmin + (ev.clientX - r.left) / r.width * (view.xmax - view.xmin),
+          y: view.ymax - (ev.clientY - r.top) / r.height * (view.ymax - view.ymin), r: r};
+}
+cv.addEventListener('pointermove', function (ev) {
+  var p = aMundo(ev);
+  if (arrastre) {
+    var dx = (ev.clientX - arrastre.cx) / p.r.width * (arrastre.v.xmax - arrastre.v.xmin);
+    var dy = (ev.clientY - arrastre.cy) / p.r.height * (arrastre.v.ymax - arrastre.v.ymin);
+    view.xmin = arrastre.v.xmin - dx; view.xmax = arrastre.v.xmax - dx;
+    view.ymin = arrastre.v.ymin + dy; view.ymax = arrastre.v.ymax + dy;
+    dibujar(); sincronizarRango(); return;
+  }
+  var t = 'x = ' + p.x.toFixed(4) + '   y = ' + p.y.toFixed(4);
+  for (var k = 0; k < 3; k++) if (funcs[k]) t += '   |   f' + (k + 1) + '(x) = ' + funcs[k](p.x).toFixed(5);
+  $('info').textContent = t;
+});
+cv.addEventListener('pointerdown', function (ev) {
+  arrastre = {cx: ev.clientX, cy: ev.clientY, v: {xmin: view.xmin, xmax: view.xmax, ymin: view.ymin, ymax: view.ymax}};
+  cv.setPointerCapture(ev.pointerId);
+});
+cv.addEventListener('pointerup', function () { arrastre = null; });
+cv.addEventListener('wheel', function (ev) {
+  ev.preventDefault();
+  var p = aMundo(ev), f = ev.deltaY > 0 ? 1.25 : 0.8;
+  view.xmin = p.x + (view.xmin - p.x) * f; view.xmax = p.x + (view.xmax - p.x) * f;
+  view.ymin = p.y + (view.ymin - p.y) * f; view.ymax = p.y + (view.ymax - p.y) * f;
+  dibujar(); sincronizarRango();
+}, {passive: false});
+['f0', 'f1', 'f2', 'xmin', 'xmax', 'ymin', 'ymax', 'px', 'py'].forEach(function (id) {
+  $(id).addEventListener('keydown', function (ev) { if (ev.key === 'Enter') graficar(); });
+});
+['on0', 'on1', 'on2'].forEach(function (id) { $(id).onchange = function () { graficar(); }; });
+window.addEventListener('resize', dibujar);
+graficar();
+</script>
+</body></html>

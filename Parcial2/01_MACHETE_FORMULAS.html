@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Machete de fórmulas — Parcial 2</title>
+<style>
+body{font-family:Segoe UI,Arial,sans-serif;max-width:960px;margin:0 auto;padding:16px 20px 60px;color:#1d1d1f;background:#fff;line-height:1.5;font-size:15px}
+h1{font-size:25px}h2{font-size:20px;background:#2b6cb0;color:#fff;padding:6px 10px;border-radius:6px;margin-top:1.8em}
+h3{font-size:17px;color:#2c5282;margin-top:1.3em;border-bottom:1px solid #cbd5e0}
+.f{font-family:Consolas,monospace;background:#f1f4f8;padding:8px 12px;margin:6px 0;white-space:pre-wrap;font-size:13.5px;border-radius:4px}
+code{font-family:Consolas,monospace;background:#f1f4f8;padding:1px 5px;border-radius:4px}
+table{border-collapse:collapse;margin:8px 0;font-size:14px}td,th{border:1px solid #cbd5e0;padding:5px 8px;text-align:left}th{background:#ebf4ff}
+.ojo{background:#fff5f5;border-left:5px solid #e53e3e;padding:8px 12px;margin:8px 0}
+.ok{background:#f0fff4;border-left:5px solid #38a169;padding:8px 12px;margin:8px 0}
+.prog{background:#ebf8ff;border-left:5px solid #3182ce;padding:8px 12px;margin:8px 0}
+</style></head><body>
+<h1>Machete de fórmulas — Parcial 2 (guías 06 a 09)</h1>
+<div class="ojo"><b>Los 3 errores que hacen perder más puntos:</b><br>
+1. Confundir <b>n</b> (subintervalos) con la <b>cantidad de puntos</b>: con n+1 puntos hay n subintervalos.<br>
+2. Usar Simpson 1/3 con <b>n impar</b> (no se puede) o 3/8 con n que no es múltiplo de 3.<br>
+3. En EDO, olvidar que cada método usa <b>su</b> pendiente: Euler la del principio, punto medio la del medio, Heun el promedio.</div>
+
+<h2>GUÍA 06 — Splines (interpolación segmentaria)</h2>
+<p>Con <b>n+1 puntos</b> hay <b>n tramos</b>. En cada tramo vale un polinomio distinto. Notación: <code>h_i = x_(i+1) − x_i</code>.</p>
+
+<h3>Spline lineal</h3>
+<div class="f">S_i(x) = y_i + m_i (x − x_i)        m_i = (y_(i+1) − y_i) / h_i
+Continuo, pero la DERIVADA SALTA en los nodos (la curva tiene picos).</div>
+
+<h3>Spline cuadrático</h3>
+<div class="f">S_i(x) = a_i + b_i (x − x_i) + c_i (x − x_i)²
+Condiciones:  a_i = y_i ;  a_i + b_i h_i + c_i h_i² = y_(i+1) ;  b_i + 2 c_i h_i = b_(i+1)
+Falta una condición: se toma  c_1 = 0  (el primer tramo es una recta)
+Después, hacia adelante:   c_i = (y_(i+1) − y_i − b_i h_i)/h_i²     b_(i+1) = b_i + 2 c_i h_i</div>
+
+<h3>Spline cúbico — el que más se pide</h3>
+<p>Incógnitas: las segundas derivadas en los nodos, <code>S''(x_i)</code>. Para cada <b>nodo interior</b> i:</p>
+<div class="f">h_(i−1) S''(x_(i−1)) + 2(h_(i−1) + h_i) S''(x_i) + h_i S''(x_(i+1))
+                     = 6 [ (y_(i+1) − y_i)/h_i − (y_i − y_(i−1))/h_(i−1) ]
+
+Ese sistema es TRIDIAGONAL → conviene resolverlo con Thomas, O(n).</div>
+<p><b>Condiciones de borde:</b></p>
+<table>
+<tr><th>Tipo</th><th>Condición</th><th>Ecuaciones que se agregan</th></tr>
+<tr><td><b>Natural</b></td><td>S''(x₀) = S''(xₙ) = 0</td><td>Salen del sistema (quedan n−1 ecuaciones)</td></tr>
+<tr><td><b>Sujeto</b> (condicionado)</td><td>Se dan S'(x₀) y S'(xₙ)</td><td>2h₀S''₀ + h₀S''₁ = 6[(y₁−y₀)/h₀ − S'(x₀)]<br>h_(n−1)S''_(n−1) + 2h_(n−1)S''ₙ = 6[S'(xₙ) − (yₙ−y_(n−1))/h_(n−1)]</td></tr>
+</table>
+<p>Con las S'' ya resueltas, los coeficientes de cada tramo:</p>
+<div class="f">a_i = y_i
+b_i = (y_(i+1) − y_i)/h_i − h_i (2 S''_i + S''_(i+1)) / 6
+c_i = S''_i / 2
+d_i = (S''_(i+1) − S''_i) / (6 h_i)
+
+S_i(x) = a_i + b_i(x − x_i) + c_i(x − x_i)² + d_i(x − x_i)³</div>
+<div class="ok"><b>Para justificar en la hoja:</b> el spline tiene S, S' y S'' <b>continuas</b> en los nodos; el polinomio interpolante único de grado n <b>oscila</b> entre los nodos (fenómeno de Runge). Por eso con muchos puntos se prefiere el spline.</div>
+<div class="prog"><code>splines.exe</code>: opción 4 → te da el sistema tridiagonal con números, las S'', la tabla de a,b,c,d, el polinomio de cada tramo y el control de continuidad.</div>
+
+<h2>GUÍA 07 — Integración: trapecio y Simpson</h2>
+<p><code>h = (b − a)/n</code> &nbsp;·&nbsp; <code>x_i = a + i·h</code> &nbsp;·&nbsp; <b>n = subintervalos</b>, hay n+1 puntos.</p>
+
+<h3>Trapecio</h3>
+<div class="f">SIMPLE (n = 1):     I = (b − a) [ f(a) + f(b) ] / 2
+COMPUESTO:          I = h/2 [ f(x₀) + 2(f(x₁) + f(x₂) + … + f(x_(n−1))) + f(xₙ) ]
+                    pesos:  1  2  2  …  2  1
+Error:   Et = −(b−a) h²/12 · f''(ξ) = −(b−a)³/(12 n²) · f''(ξ)        → O(h²)</div>
+
+<h3>Simpson 1/3 — n tiene que ser PAR</h3>
+<div class="f">SIMPLE (n = 2):     I = h/3 [ f(x₀) + 4 f(x₁) + f(x₂) ]
+COMPUESTO:          I = h/3 [ f(x₀) + 4(impares) + 2(pares interiores) + f(xₙ) ]
+                    pesos:  1  4  2  4  2  …  4  1
+Error:   Et = −(b−a) h⁴/180 · f⁗(ξ)                                   → O(h⁴)</div>
+
+<h3>Simpson 3/8 — n múltiplo de 3</h3>
+<div class="f">SIMPLE (n = 3):     I = 3h/8 [ f(x₀) + 3 f(x₁) + 3 f(x₂) + f(x₃) ]
+COMPUESTO:          pesos:  1  3  3  2  3  3  2  …  3  3  1
+Error:   mismo orden que 1/3, O(h⁴)</div>
+
+<h3>n IMPAR: hay que combinar</h3>
+<div class="f">Simpson 1/3 en los primeros n−3 subintervalos (cantidad par)
+Simpson 3/8 en los últimos 3
+I = I(1/3) + I(3/8)</div>
+
+<h3>Cuántos subintervalos para una tolerancia</h3>
+<div class="f">Trapecio:     n ≥ raíz( (b−a)³ · max|f''| / (12 · tol) )
+Simpson 1/3:  n ≥ ( (b−a)⁵ · max|f⁗| / (180 · tol) )^(1/4)
+Se redondea SIEMPRE para ARRIBA (y al primer par si es Simpson 1/3).</div>
+<div class="ok"><b>Para estimar el error cuando NO dan el valor exacto:</b> se usa la derivada <b>promedio</b>, que sale exacta con el teorema fundamental:<br>
+<code>f'' promedio = [ f'(b) − f'(a) ] / (b − a)</code> &nbsp;y&nbsp; <code>f⁗ promedio = [ f'''(b) − f'''(a) ] / (b − a)</code>.<br>
+Con el <b>máximo</b> de la derivada se obtiene una <b>cota</b> del error.</div>
+<div class="prog"><code>integracion.exe</code>: opciones 2 a 5, con la tabla de pesos y el error teórico. Opción 8 para el n necesario.</div>
+
+<h2>GUÍA 08 (1ra parte) — Cuadratura de Gauss-Legendre</h2>
+<p>En vez de puntos equiespaciados, <b>elige</b> los puntos y los pesos para maximizar la exactitud.</p>
+<div class="f">1) CAMBIO DE VARIABLE de [a,b] a [−1,1]:
+      x = [ (b−a) t + (b+a) ] / 2            dx = (b−a)/2 · dt
+
+2) I = (b−a)/2 · Σ w_i · f(x_i)        con  x_i = [(b−a) t_i + (b+a)]/2
+
+3) EXACTITUD: con m puntos es exacta para polinomios de grado ≤ 2m − 1</div>
+<table>
+<tr><th>m</th><th>t_i (nodos)</th><th>w_i (pesos)</th><th>Exacta hasta grado</th></tr>
+<tr><td>1</td><td>0</td><td>2</td><td>1</td></tr>
+<tr><td>2</td><td>±0.5773502692 &nbsp;(±1/√3)</td><td>1 ; 1</td><td>3</td></tr>
+<tr><td>3</td><td>0 ; ±0.7745966692</td><td>0.8888888889 (8/9) ; 0.5555555556 (5/9)</td><td>5</td></tr>
+<tr><td>4</td><td>±0.3399810436 ; ±0.8611363116</td><td>0.6521451549 ; 0.3478548451</td><td>7</td></tr>
+<tr><td>5</td><td>0 ; ±0.5384693101 ; ±0.9061798459</td><td>0.5688888889 ; 0.4786286705 ; 0.2369268851</td><td>9</td></tr>
+</table>
+<div class="prog"><code>integracion.exe</code> → opción 6. Escribe el cambio de variable, la tabla de nodos y pesos, el paso de cada t_i a su x_i y la suma ponderada.</div>
+
+<h2 style="background:#718096">GUÍA 08 (2da parte) — Diferenciación numérica &nbsp;·&nbsp; NO ENTRA</h2>
+<div class="ojo"><b>La profe avisó el 27/10 que este tema NO entra en el parcial.</b> Lo dejo por si lo necesitás para el final, o por si lo piden como paso intermedio de otro ejercicio, pero no lo estudies ahora.</div>
+<h3>Primera derivada</h3>
+<table>
+<tr><th>Fórmula</th><th>Expresión</th><th>Error</th></tr>
+<tr><td>Hacia adelante</td><td>[ f(x+h) − f(x) ] / h</td><td>O(h)</td></tr>
+<tr><td>Hacia atrás</td><td>[ f(x) − f(x−h) ] / h</td><td>O(h)</td></tr>
+<tr><td><b>Centrada</b></td><td>[ f(x+h) − f(x−h) ] / (2h)</td><td>O(h²)</td></tr>
+<tr><td>Adelante, alta exactitud</td><td>[ −f(x+2h) + 4f(x+h) − 3f(x) ] / (2h)</td><td>O(h²)</td></tr>
+<tr><td>Atrás, alta exactitud</td><td>[ 3f(x) − 4f(x−h) + f(x−2h) ] / (2h)</td><td>O(h²)</td></tr>
+<tr><td>Centrada, alta exactitud</td><td>[ −f(x+2h) + 8f(x+h) − 8f(x−h) + f(x−2h) ] / (12h)</td><td>O(h⁴)</td></tr>
+</table>
+<h3>Segunda derivada</h3>
+<table>
+<tr><th>Fórmula</th><th>Expresión</th><th>Error</th></tr>
+<tr><td>Hacia adelante</td><td>[ f(x+2h) − 2f(x+h) + f(x) ] / h²</td><td>O(h)</td></tr>
+<tr><td>Hacia atrás</td><td>[ f(x) − 2f(x−h) + f(x−2h) ] / h²</td><td>O(h)</td></tr>
+<tr><td><b>Centrada</b></td><td>[ f(x+h) − 2f(x) + f(x−h) ] / h²</td><td>O(h²)</td></tr>
+<tr><td>Adelante, alta exactitud</td><td>[ −f(x+3h) + 4f(x+2h) − 5f(x+h) + 2f(x) ] / h²</td><td>O(h²)</td></tr>
+<tr><td>Atrás, alta exactitud</td><td>[ 2f(x) − 5f(x−h) + 4f(x−2h) − f(x−3h) ] / h²</td><td>O(h²)</td></tr>
+<tr><td>Centrada, alta exactitud</td><td>[ −f(x+2h) + 16f(x+h) − 30f(x) + 16f(x−h) − f(x−2h) ] / (12h²)</td><td>O(h⁴)</td></tr>
+</table>
+<h3>Orden superior (centradas, O(h²))</h3>
+<div class="f">f'''(x)  ≈ [ f(x+2h) − 2f(x+h) + 2f(x−h) − f(x−2h) ] / (2h³)
+f⁗(x)   ≈ [ f(x+2h) − 4f(x+h) + 6f(x) − 4f(x−h) + f(x−2h) ] / h⁴</div>
+<h3>Extrapolación de Richardson</h3>
+<div class="f">Sobre un método O(h²):   D = [ 4 D(h/2) − D(h) ] / 3        (queda O(h⁴))
+General para orden p:    D = [ 2^p D(h/2) − D(h) ] / (2^p − 1)</div>
+<div class="ojo"><b>Pregunta clásica: ¿qué pasa si h es muy chico?</b> El error de <b>truncamiento</b> baja, pero el de <b>redondeo</b> sube: al restar f(x+h) − f(x−h), dos números casi iguales, se pierden cifras significativas, y después se divide por un h chiquito, que amplifica el ruido. Hay un <b>h óptimo</b>. Es al revés que en integración, donde bajar h casi siempre mejora. (Epsilon de máquina: 2.22·10⁻¹⁶.)</div>
+<div class="prog"><code>derivacion.exe</code>: opciones 2 y 3 (con tabla comparativa de las 6 fórmulas), 5 Richardson, 7 el efecto de h.</div>
+
+<h2>GUÍA 09 — EDO: problema de valor inicial</h2>
+<p>Se resuelve <code>dy/dx = f(x,y)</code> con <code>y(x₀) = y₀</code>. Todos los métodos tienen la misma forma:</p>
+<div class="f">y_(i+1) = y_i + φ · h          φ = la pendiente que usa el método</div>
+<table>
+<tr><th>Método</th><th>Fórmula</th><th>Orden</th><th>Evaluaciones de f</th></tr>
+<tr><td><b>Euler</b></td><td>y_(i+1) = y_i + f(x_i, y_i) h</td><td>1 — O(h)</td><td>1</td></tr>
+<tr><td><b>Heun</b><br>(Euler mejorado)</td><td>predictor: y* = y_i + f(x_i,y_i) h<br>corrector: y_(i+1) = y_i + [f(x_i,y_i) + f(x_(i+1), y*)]/2 · h</td><td>2 — O(h²)</td><td>2</td></tr>
+<tr><td><b>Punto medio</b></td><td>y_(i+1/2) = y_i + f(x_i,y_i) h/2<br>y_(i+1) = y_i + f(x_(i+1/2), y_(i+1/2)) h</td><td>2 — O(h²)</td><td>2</td></tr>
+<tr><td><b>Ralston</b> (RK2)</td><td>k₁ = f(x_i, y_i) ; k₂ = f(x_i + 3h/4, y_i + 3k₁h/4)<br>y_(i+1) = y_i + (k₁/3 + 2k₂/3) h</td><td>2 — O(h²)</td><td>2</td></tr>
+<tr><td><b>RK4</b> clásico</td><td>k₁ = f(x_i, y_i)<br>k₂ = f(x_i + h/2, y_i + k₁h/2)<br>k₃ = f(x_i + h/2, y_i + k₂h/2)<br>k₄ = f(x_i + h, y_i + k₃h)<br>y_(i+1) = y_i + (k₁ + 2k₂ + 2k₃ + k₄)/6 · h</td><td>4 — O(h⁴)</td><td>4</td></tr>
+</table>
+<div class="ok"><b>Cómo se verifica el orden (pregunta típica):</b> se resuelve con h y con h/2 y se compara el error. Si el método es de orden p, el error se divide por <b>2^p</b>: por 2 en Euler, por 4 en Heun/punto medio, por <b>16</b> en RK4.</div>
+<div class="ojo"><b>Diferencia entre Heun y punto medio:</b> los dos son de orden 2, pero Heun <b>promedia</b> las pendientes de los dos extremos del intervalo, y punto medio usa <b>una sola</b> pendiente, la del centro. Heun se puede <b>iterar</b> el corrector; punto medio no.</div>
+<div class="prog"><code>edo.exe</code>: opciones 2 a 6 (cada una imprime la primera iteración paso a paso y la tabla completa), 7 comparar todos, 8 el efecto de h.</div>
+
+<h3>Otro esquema de Runge-Kutta (lo tomaron en 2025)</h3>
+<p>Cualquier RK se describe con sus coeficientes. El esquema general:</p>
+<div class="f">k1 = f(xi , yi)
+k2 = f(xi + a2·h , yi + b21·h·k1)
+k3 = f(xi + a3·h , yi + b31·h·k1 + b32·h·k2)
+k4 = f(xi + a4·h , yi + b41·h·k1 + b42·h·k2 + b43·h·k3)
+y(i+1) = y(i) + h·( w1·k1 + w2·k2 + w3·k3 + w4·k4 )
+
+Control: w1 + w2 + w3 + w4 = 1  (si no da 1, el método no es consistente)</div>
+<p><b>RK4 3/8</b> (el del Parcial 2025): a2 = 1/3, b21 = 1/3 · a3 = 2/3, b31 = −1/3, b32 = 1 · a4 = 1, b41 = 1, b42 = −1, b43 = 1 · pesos 1/8, 3/8, 3/8, 1/8.</p>
+<div class="prog"><code>edo.exe</code> → opción <b>10</b>: elegís el esquema de una lista (incluye el 3/8) o cargás los coeficientes a mano.</div>
+
+<h3>EDO de orden superior → bajar a primer orden</h3>
+<p>Euler y RK4 solo resuelven ecuaciones de <b>primer</b> orden. Si te dan una de segundo orden, lo PRIMERO es el cambio de variable:</p>
+<div class="f">Dada:   y'' = g(x , y , y')      con  y(x0) = y0 ,  y'(x0) = y'0
+
+Se define:   z = y'
+
+Queda el SISTEMA de dos ecuaciones de primer orden:
+   dy/dx = z
+   dz/dx = g(x , y , z)
+con  y(x0) = y0  y  z(x0) = y'0
+
+Ejemplo:  y'' + 2y' + 5y = 0   →   dy/dx = z ;  dz/dx = −2z − 5y</div>
+<div class="ojo"><b>El error más común:</b> avanzar una incógnita y después la otra. Las dos avanzan <b>a la vez</b>: hay que calcular k1y <b>y</b> k1z antes de pasar a los k2, porque la pendiente de cada una depende del valor de la otra.</div>
+<div class="f">RK4 para el sistema:
+   k1y = z_i                      k1z = g(x_i , y_i , z_i)
+   k2y = z_i + k1z·h/2            k2z = g(x_i+h/2 , y_i+k1y·h/2 , z_i+k1z·h/2)
+   k3y = z_i + k2z·h/2            k3z = g(x_i+h/2 , y_i+k2y·h/2 , z_i+k2z·h/2)
+   k4y = z_i + k3z·h              k4z = g(x_i+h , y_i+k3y·h , z_i+k3z·h)
+   y(i+1) = y_i + h(k1y + 2k2y + 2k3y + k4y)/6
+   z(i+1) = z_i + h(k1z + 2k2z + 2k3z + k4z)/6</div>
+<div class="prog"><code>edo.exe</code> → opción <b>11</b>: escribís y'' despejada usando <code>yp</code> para y', y el programa hace el cambio de variable, lo explica y resuelve con Euler o RK4.</div>
+
+<h2>Lo que más se repite en los parciales viejos</h2>
+<table>
+<tr><th>Patrón</th><th>Años</th><th>Cómo se resuelve</th></tr>
+<tr><td><b>Tabla desigual → spline → tabla equiespaciada → integrar</b></td><td>2017, 2024, 2025, Final 2022</td><td><code>splines.exe</code> op. 4 y 6 → pegar en <code>integracion.exe</code></td></tr>
+<tr style="opacity:.55"><td>Tabla → derivada por diferencias → integrar la derivada <b>(NO ENTRA: lleva diferenciación)</b></td><td>2017, 2022, 2024, 2025, Final 2021</td><td><code>derivacion.exe</code> op. 4 → pegar en <code>integracion.exe</code></td></tr>
+<tr><td><b>Método inventado + pseudocódigo</b></td><td>2022, 2024</td><td>opción 9 de <code>integracion.exe</code> o <code>edo.exe</code></td></tr>
+<tr><td><b>Otro esquema de RK</b></td><td>2025</td><td><code>edo.exe</code> op. 10</td></tr>
+<tr><td><b>Gauss de 2 puntos a mano + de 6 con el código</b></td><td>2024, 2025</td><td><code>integracion.exe</code> op. 6</td></tr>
+<tr><td><b>Primera iteración de Euler / punto medio a mano</b></td><td>2017, 2025</td><td><code>edo.exe</code> op. 2 y 4 (imprimen el detalle)</td></tr>
+<tr><td><b>EDO de orden superior</b></td><td>Final 2022, y la profe avisó</td><td><code>edo.exe</code> op. 11</td></tr>
+</table>
+
+<h2>Resumen de órdenes de error</h2>
+<table>
+<tr><th>Método</th><th>Orden del error</th><th>Si h se parte al medio, el error…</th></tr>
+<tr><td>Trapecio compuesto</td><td>O(h²)</td><td>se divide por 4</td></tr>
+<tr><td>Simpson 1/3 y 3/8</td><td>O(h⁴)</td><td>se divide por 16</td></tr>
+<tr><td>Gauss-Legendre m puntos</td><td>exacta hasta grado 2m−1</td><td>— (no usa h)</td></tr>
+<tr><td>Diferencias de un lado</td><td>O(h)</td><td>se divide por 2</td></tr>
+<tr><td>Diferencias centradas</td><td>O(h²)</td><td>se divide por 4</td></tr>
+<tr><td>Euler</td><td>O(h)</td><td>se divide por 2</td></tr>
+<tr><td>Heun / punto medio / Ralston</td><td>O(h²)</td><td>se divide por 4</td></tr>
+<tr><td>RK4</td><td>O(h⁴)</td><td>se divide por 16</td></tr>
+</table>
+</body></html>
