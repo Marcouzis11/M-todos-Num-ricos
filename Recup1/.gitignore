@@ -1,0 +1,15 @@
+# Ejecutables y resultados propios de cada computadora.
+*.exe
+__pycache__/
+**/salida_*.txt
+CODIGO/LocalizacionRaices/Cerrados/Biseccion
+CODIGO/LocalizacionRaices/Cerrados/RegulaFalsi
+CODIGO/LocalizacionRaices/Abiertos/Newton-Raphson
+CODIGO/LocalizacionRaices/Abiertos/Secante
+CODIGO/LocalizacionRaices/Abiertos/Punto-Fijo
+CODIGO/SistEcuacionesLineales/Eliminacion-Gaussiana
+CODIGO/SistEcuacionesLineales/JacobiGaussSeidelRelax
+CODIGO/Interpolacion/interpolacion
+CODIGO/Interpolacion/Spline
+CODIGO/Regresión/regresionLineal
+CODIGO/Regresión/polynomialRegression
