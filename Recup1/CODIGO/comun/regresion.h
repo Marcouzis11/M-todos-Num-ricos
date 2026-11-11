@@ -1,6 +1,6 @@
 #ifndef RECUP1_REGRESION_H
 #define RECUP1_REGRESION_H
-#include "base.h"
+#include "graficos.h"
 namespace recup {
 // Minimos cuadrados por Householder con escalado de columnas.
 // Se evita usar las ecuaciones normales para la solucion numerica principal.
@@ -133,7 +133,9 @@ inline void regresion(Sesion &s,bool soloRecta){
     if(n>m)s.hoja<<"Error estandar estimado s_y/x = sqrt(Sr/(n-m)) = "<<std::sqrt(sr/(n-m))<<"; m="<<m<<" coeficientes.\n";
     else s.hoja<<"Error estandar estimado: no definido, n-m=0 (sin grados de libertad residuales).\n";
     if(st>0){double r2=1-sr/st;s.hoja<<"R^2 = 1-Sr/St = "<<r2<<'\n';
-        if(tipo==1 && grado>1 && r2>=0)s.hoja<<"Indice de correlacion multiple R=sqrt(R^2) = "<<std::sqrt(r2)<<" (no es el r de Pearson).\n";
+        if(((tipo==1 && grado>1) || tipo==2) && r2>=0)s.hoja<<"Indice de correlacion multiple R=sqrt(R^2) = "<<std::sqrt(r2)<<" (no es el r de Pearson).\n";
+        if(r2<0)s.hoja<<"sqrt(R^2) no es real: el ajuste es peor que usar la media. No se toma valor absoluto.\n";
+        if(tipo==2)s.hoja<<"Para bases sin constante, sqrt(1-Sr/St) es el indice solicitado por esta convencion; no necesariamente coincide con la correlacion de Pearson entre y e y ajustado.\n";
     }else s.hoja<<"R^2: no definido, St=0 (todos los y son iguales).\n";
     if(tipo==1 && grado==1){
         double mx=0;for(double x:p.x)mx+=x/n;double sxx=0,syy=0,sxy=0;
@@ -145,7 +147,22 @@ inline void regresion(Sesion &s,bool soloRecta){
     if(tipo==1){s.hoja<<"Diferencia maxima entre forma expandida y evaluacion estable en los datos = "<<maxexp<<'\n';
         if(maxexp>1e-8*std::max(1.0,std::fabs(media)))s.hoja<<"AVISO: evaluar en t conserva mas precision que usar los coeficientes expandidos en x.\n";}
     s.mostrar();
-    for(;;){int op=s.entero("1=predecir en un x, 0=salir",0,1,"1");if(!op)break;
+    for(;;){int op=s.entero("1=predecir en un x, 2=raiz del modelo, 3=grafico SVG/CSV, 4=sistema normal redondeado por Gauss, 0=salir",0,4,"1");if(!op)break;
+        if(op==4){
+            int dec=s.entero("Decimales del sistema normal (se redondean matriz y vector)",0,12,"3");
+            double factor=std::pow(10.0,dec);Mat ar(m,Vec(m,0));Vec br(m,0);
+            for(int j=0;j<m;++j)for(int i=0;i<n;++i){br[j]=finito(br[j]+phi[i][j]*v[i]);
+                for(int k=0;k<m;++k)ar[j][k]=finito(ar[j][k]+phi[i][j]*phi[i][k]);}
+            for(int j=0;j<m;++j){br[j]=finito(std::round(finito(br[j]*factor))/factor);
+                for(int k=0;k<m;++k)ar[j][k]=finito(std::round(finito(ar[j][k]*factor))/factor);}
+            s.hoja<<"SISTEMA NORMAL REDONDEADO A "<<dec<<" DECIMALES\n";matriz(s.hoja,ar,br);
+            try{Vec cr=gauss(ar,br,&s.hoja).x;for(int j=0;j<m;++j)s.hoja<<"Coeficiente redondeado c"<<j<<" = "<<cr[j]<<'\n';}
+            catch(const std::exception &e){s.hoja<<"El sistema redondeado no se pudo resolver: "<<e.what()<<'\n';}
+            s.hoja<<"Este resultado corresponde al sistema redondeado. El modelo principal conserva los datos sin redondear.\n";
+            s.mostrar();continue;
+        }
+        if(op==2){raizModelo(s,predecir);continue;}
+        if(op==3){graficoFuncion(s,predecir,"ajuste","Modelo ajustado",&p);continue;}
         double q=s.num("x para predecir"),pred=predecir(q);
         s.hoja<<"PREDICCION CON EL MODELO AJUSTADO\nRESULTADO: y("<<q<<") = "<<pred<<'\n';
         auto mm=std::minmax_element(p.x.begin(),p.x.end());if(q<*mm.first || q>*mm.second)s.hoja<<"La consulta esta fuera del rango observado: EXTRAPOLACION.\n";

@@ -6,6 +6,10 @@ Los binarios y data.txt se copian a una carpeta temporal; las salidas quedan ahi
 """
 from pathlib import Path
 import math
+import os
+from decimal import Decimal
+import csv
+import xml.etree.ElementTree as ET
 import random
 import re
 import shutil
@@ -42,10 +46,10 @@ class Verificacion(unittest.TestCase):
         cls.base = Path(cls.tmp.name)
         cls.bin = {}
         for k, rel in PROGRAMAS.items():
-            origen = ROOT / 'CODIGO' / rel
+            origen = ROOT / 'CODIGO' / (rel + ('.exe' if os.name == 'nt' else ''))
             if not origen.is_file():
                 raise RuntimeError(f'Primero compilar: falta {origen}')
-            destino = cls.base / rel
+            destino = cls.base / (rel + ('.exe' if os.name == 'nt' else ''))
             destino.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(origen, destino)
             cls.bin[k] = destino
@@ -59,8 +63,8 @@ try { std::cout << std::setprecision(17) << recup::evaluar(s,2) << "\\n"; }
 catch(const std::exception&) { std::cout << "ERROR\\n"; }
 } }
 ''')
-        cls.probe = cls.base / 'evaluador'
-        subprocess.run(['g++', '-std=c++11', '-Wall', '-Wextra', '-Werror',
+        cls.probe = cls.base / ('evaluador.exe' if os.name == 'nt' else 'evaluador')
+        subprocess.run([os.environ.get('CXX', 'g++'), '-std=c++11', '-Wall', '-Wextra', '-Werror',
                         '-I', str(ROOT / 'CODIGO/comun'), str(probe),
                         '-o', str(cls.probe)], check=True, capture_output=True, text=True)
 
@@ -68,7 +72,10 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
     def tearDownClass(cls):
         cls.tmp.cleanup()
 
-    def run_program(self, key, data, ok=True):
+    def run_program(self, key, data, ok=True, avanzado=False):
+        # Las entradas historicas no incluian el nuevo menu opcional al final.
+        if data and not avanzado and key in ('bis','rf','nr','sec','pf','iter'):
+            data += '0\n'
         p = subprocess.run([str(self.bin[key])], input=data, text=True,
                            cwd=self.base, capture_output=True, timeout=10)
         self.assertEqual(p.returncode, 0 if ok else 1, p.stdout + p.stderr)
@@ -86,7 +93,8 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         self.assertAlmostEqual(obtenido, valor, delta=tol)
 
     def test_01_arbol_y_originales_intactos(self):
-        originales = {p.relative_to(SRC) for p in SRC.rglob('*.cpp')}
+        fuente = SRC if SRC.is_dir() else ROOT / 'PARAEDITAR'
+        originales = {p.relative_to(fuente) for p in fuente.rglob('*.cpp')}
         self.assertEqual(len(originales), 11)
         for branch in ('PARAEDITAR', 'CODIGO'):
             copia = {p.relative_to(ROOT / branch) for p in (ROOT / branch).rglob('*.cpp')}
@@ -175,7 +183,8 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         self.cerca(out, r'x1 = ', 1)
         self.cerca(out, r'x2 = ', 2)
         out = self.run_program('gauss', entrada(1, 2, '1e-300 0 1e-300', '0 1e-300 2e-300'))
-        self.assertIn('producto U_ii = 1e-600', out)
+        det = re.search(r'producto U_ii = (\S+)', out).group(1)
+        self.assertLess(abs(Decimal(det)/Decimal('1e-600')-1), Decimal('1e-12'))
         self.cerca(out, r'x2 = ', 2)
 
     def test_09_gauss_singulares_y_archivo(self):
@@ -339,14 +348,14 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
 
     def test_25_registros_y_fin_entrada(self):
         programa = self.bin['bis']
-        log = programa.with_name('salida_' + programa.name + '.txt')
+        log = programa.with_name('salida_' + programa.stem + '.txt')
         antes = log.read_text() if log.exists() else ''
         out = self.run_program('bis', entrada('x-2', 1, 3, 5, 1, '1e-6', 20, ''))
         despues = log.read_text()
         self.assertTrue(despues.startswith(antes))
         self.assertIn('TEXTO PARA COPIAR EN LA HOJA', despues[len(antes):])
         self.assertIn('f(x), ecuacion f(x)=0: x-2', despues[len(antes):])
-        self.assertIn(str(log), out)
+        self.assertIn(str(log).replace(chr(92), "/"), out.replace(chr(92), "/"))
         for key in PROGRAMAS:
             out = self.run_program(key, '')
             self.assertIn('Entrada finalizada', out)
@@ -385,6 +394,129 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         for metodo in (1, 2, 3):
             out = self.run_program('interp', entrada(1, ' '.join(map(str,xs)), ' '.join(map(str,ys)), metodo, '', '', 1, .3, 0))
             self.cerca(out, r'RESULTADO: P\(0.3\) = ', .3**4-.6+3)
+
+
+    def test_29_newton_cociente_indice_y_error_por_iteracion(self):
+        out=self.run_program('nr',entrada('x^3+2*x-5','3*x^2+2',1.2,1,2,4,'1.3282688557'))
+        self.cerca(out,r'C\[3\] = ',.5464097473,1e-6)
+        self.cerca(out,r'Error verdadero iteracion 3: absoluto=',1.3996843684e-9,1e-14)
+        self.cerca(out,r'A diez decimales: x = ',1.3282688557,1e-10)
+        self.assertIn('Para C3 pedir 4 pasos',out)
+
+    def test_30_punto_fijo_relajado_y_raiz_cubica_real(self):
+        out=self.run_program('pf',entrada('cbrt(5-2*x)','',1.2,1,2,5,'',1,.7,0),avanzado=True)
+        self.cerca(out,r'ULTIMA APROXIMACION .*: x = ',1.3282688464746197,1e-12)
+        self.cerca(out,r'lambda=',.7,1e-14)
+        out=self.run_program('pf',entrada('cbrt(5-2*x)','',1.2,1,2,5,''))
+        self.cerca(out,r'ULTIMA APROXIMACION .*: x = ',1.3292322075449303,1e-12)
+        p=subprocess.run([str(self.probe)],input=entrada('cbrt(-8)'),text=True,capture_output=True,check=True)
+        self.assertEqual(float(p.stdout),-2)
+
+    def test_31_biseccion_2025_primera_comparacion_iua(self):
+        out=self.run_program('bis',entrada('(x+1)/(x+4)-.25*x',1.75,3.2,3,1,.01,100,2,1,3.2,1,'',0),avanzado=True)
+        fila=next(l for l in out.splitlines() if l.startswith('1 | '))
+        valores=[float(v.strip()) for v in fila.split('|')]
+        self.assertAlmostEqual(valores[9],25.55066079295154,delta=1e-10)
+        self.cerca(out,r'RESULTADO: x = ',2.000103759765625,1e-14)
+        self.cerca(out,r'Iteraciones realizadas = ',13)
+
+    def test_32_corte_doble_no_atajo_por_residuo_cero(self):
+        # En el paso 1 el residuo es cero, pero el salto es 1 > 0.5.
+        out=self.run_program('iter',entrada(2,1,1,'1 1','0',6,1,.5,10,'1e-5'))
+        self.cerca(out,r'Iteraciones = ',2)
+        self.assertIn('Y residuo <',out)
+
+    def test_33_corte_doble_norma_euclidea(self):
+        for criterio,iteraciones in [(6,1),(7,2)]:
+            out=self.run_program('iter',entrada(2,1,2,'1 0 1','0 1 1','0 0',criterio,1,1.2,10,'1e-5'))
+            self.cerca(out,r'Iteraciones = ',iteraciones)
+        self.assertIn('Residuo euclideo iteracion',out)
+
+    def test_34_comparacion_estricta_e_inclusiva(self):
+        for comparacion,pasos in [(1,2),(2,1)]:
+            out=self.run_program('bis',entrada('x^2-2',0,2,1,1,1,20,'',1,0,comparacion,'',0),avanzado=True)
+            self.cerca(out,r'Iteraciones realizadas = ',pasos)
+
+    def test_35_reorden_2024_y_referencia_exacta(self):
+        out=self.run_program('iter',entrada(2,1,3,'0 2 5 -14','1 -4 2 -19','5 1 -2 16','0 0 0',8,1,'1e-4',100,1,2,'1 3 -4',1),avanzado=True)
+        self.assertIn('Permutacion de ecuaciones: 3 2 1',out)
+        self.cerca(out,r'Error verdadero iteracion 1: inf=',2.55)
+        self.assertLess(self.valor(out,r'Error verdadero infinito = '),1e-4)
+        self.assertIn('A diez decimales:',out)
+
+    def test_36_permutacion_invalida_y_dominancia_imposible(self):
+        out=self.run_program('iter',entrada(2,1,2,'4 1 6','1 3 7','0 0',1,2,1,1,1,'1 1'),ok=False,avanzado=True)
+        self.assertIn('Permutacion invalida',out)
+        out=self.run_program('iter',entrada(2,1,2,'1 2 3','2 1 3','0 0',1,2,1,1,2,''),avanzado=True)
+        # En este sistema SI se puede reordenar (orden 2,1).
+        self.assertIn('Permutacion de ecuaciones: 2 1',out)
+        out=self.run_program('iter',entrada(2,1,2,'1 1 2','1 -1 0','0 0',1,2,1,1,2,''),avanzado=True)
+        self.assertIn('No existe una permutacion',out)
+
+    def test_37_regresion_2026_bases_y_redondeo(self):
+        out=self.run_program('reg',entrada(1,'1 1.5 2 3 4 5','5.04 7.28 9.56 13.61 17.82 21.76',2,3,'1','x','1/x',4,3,0))
+        self.cerca(out,r'Indice de correlacion multiple R=sqrt\(R\^2\) = ',.9999584918136352,1e-12)
+        self.cerca(out,r'Coeficiente redondeado c0 = ',1.9751655,1e-7)
+        self.cerca(out,r'Coeficiente redondeado c2 = ',-.95593693,1e-7)
+
+    def test_38_regresion_2025_trigonometrica(self):
+        out=self.run_program('reg',entrada(1,'1 1.2 1.5 2 2.6 2.9 3','-.236 .209 .853 1.746 2.231 2.163 2.110',2,2,'sin(x)','cos(x)',0))
+        self.cerca(out,r'c0 = ',1.0007923964264187,1e-10)
+        self.cerca(out,r'c1 = ',-1.9915083519703431,1e-10)
+        self.cerca(out,r'Indice de correlacion multiple R=sqrt\(R\^2\) = ',.9999787168843552,1e-12)
+
+    def test_39_raiz_modelo_lineal_2024(self):
+        out=self.run_program('recta',entrada(1,'1 1.2 1.5 1.75 2','-.148 -.040 .181 .419 .700',2,1,2,'1e-12','1e-12',200,'1.2620326547',0))
+        self.cerca(out,r'RESULTADO: raiz del modelo = ',1.2272482649899428,1e-11)
+        self.cerca(out,r'Error absoluto verdadero = \|aproximado - referencia\| = ',abs(1.2272482649899428-1.2620326547),1e-11)
+
+    def test_40_graficos_interpolacion_csv_error_y_no_sobrescribir(self):
+        antes=set(self.base.rglob('grafico_interpolacion_*.csv'))
+        out=self.run_program('interp',entrada(1,'0 1 2','0 1 4',1,'x^2+.5','',3,0,2,20,3,0,2,20,0))
+        nuevos=set(self.base.rglob('grafico_interpolacion_*.csv'))-antes
+        self.assertEqual(len(nuevos),2)
+        for f in nuevos:
+            with f.open(newline='') as h: filas=list(csv.DictReader(h))
+            self.assertEqual(len(filas),21)
+            for fila in filas:self.assertAlmostEqual(float(fila['error_absoluto']),.5,delta=1e-12)
+            for svg in [f.with_suffix('.svg'),f.with_name(f.stem+'_error.svg')]:
+                root=ET.parse(svg).getroot();self.assertEqual(root.tag,'{http://www.w3.org/2000/svg}svg')
+                for el in root.iter():
+                    if el.tag.endswith('path'):self.assertNotRegex(el.attrib.get('d',''),r'(?i)nan|inf')
+        self.assertIn('GRAFICO DEL ERROR',out)
+
+    def test_41_grafico_raices_con_huecos_de_dominio(self):
+        antes=set(self.base.rglob('grafico_funcion_*.csv'))
+        out=self.run_program('bis',entrada('ln(x)',.5,2,5,1,'1e-6',100,'',1,'',1,'',1,-1,2,30),avanzado=True)
+        nuevo=(set(self.base.rglob('grafico_funcion_*.csv'))-antes).pop()
+        with nuevo.open(newline='') as h:filas=list(csv.DictReader(h))
+        self.assertTrue(any(not f['modelo'] for f in filas))
+        ET.parse(nuevo.with_suffix('.svg'))
+        self.assertIn('Muestras con evaluaciones invalidas: 11',out)
+
+    def test_42_spline_2025_y_grafico(self):
+        out=self.run_program('spline',entrada(1,'1 3 5 7 13','800 2310 3090 3940 4755',3,'',1,10,4,1,13,40,0))
+        self.cerca(out,r'RESULTADO: S\(10\) = ',4629.283405172413,1e-8)
+        self.assertIn('GRAFICO:',out)
+
+    def test_43_redondeo_singular_no_destruye_modelo_principal(self):
+        out=self.run_program('reg',entrada(1,'0 1 2','0 1 2',2,2,'x','x+.001',4,0,1,1.5,'',0))
+        self.assertIn('El sistema redondeado no se pudo resolver',out)
+        self.cerca(out,r'RESULTADO: y\(1.5\) = ',1.5)
+
+    def test_44_referencia_numerica_gauss_y_error_verdadero(self):
+        out=self.run_program('iter',entrada(2,1,2,'4 1 6','1 3 7','0 0',9,1,'1e-7',100,1,0,'gauss',1),avanzado=True)
+        self.assertIn('sujeta al redondeo',out)
+        self.assertLess(self.valor(out,r'Error verdadero euclideo = '),1e-7)
+
+    def test_45_corte_doble_raices_y_residuo_original_relajado(self):
+        # g(x)=1: alcanzar el punto fijo no debe saltar el doble corte con un paso grande.
+        out=self.run_program('pf',entrada('1','0',0,1,1,.5,10,'',1,1,1,'1e-5',0),avanzado=True)
+        self.cerca(out,r'Iteraciones realizadas = ',2)
+        # Lambda diminuto da pasos pequenos, pero g(x)-x sigue lejos de cero.
+        out=self.run_program('pf',entrada('1','0',0,1,1,'1e-6',3,'',1,'1e-10',1,'1e-5',0),avanzado=True)
+        self.assertNotIn('RESULTADO: x = ',out)
+        self.assertGreater(self.valor(out,r'Residuo absoluto = '),.99)
 
 
 if __name__ == '__main__':

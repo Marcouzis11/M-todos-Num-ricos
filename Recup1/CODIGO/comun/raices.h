@@ -1,6 +1,6 @@
 #ifndef RECUP1_RAICES_H
 #define RECUP1_RAICES_H
-#include "base.h"
+#include "graficos.h"
 namespace recup {
 enum MetodoRaiz {BISECCION, FALSA_POSICION, NEWTON, SECANTE, PUNTO_FIJO};
 inline double derivadaNumerica(const std::string &f,double x){
@@ -36,6 +36,20 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
     int maxit=s.entero(modo==1?"Maximo de iteraciones":"Cantidad de iteraciones",1,10000,modo==1?"100":"3");
     std::string ref=s.leer("Raiz de referencia para error verdadero [ENTER=sin referencia]: ");
     double exacto=0; if(!ref.empty()) exacto=Expresion(ref).evaluar(0,false,false);
+    bool anteriorInicial=false, estricto=true, dibujar=false;
+    double lambda=1,tolResiduo=0;
+    int extras=s.entero("Opciones adicionales: 0=continuar, 1=configurar inicio previo/relajacion/corte/grafico",0,1,"0");
+    if(extras){
+        if(cerrado){std::string t=s.leer("Aproximacion previa para el PRIMER error [ENTER=sin previa]: ");
+            if(!t.empty()){viejo=Expresion(t).evaluar(0,false,false);anteriorInicial=true;}}
+        if(fijo)lambda=s.positivo("Lambda de punto fijo: x_n=(1-lambda)*x_anterior+lambda*g(x_anterior)","1");
+        if(modo==1){
+            estricto=s.entero("Comparacion: 1=E < tolerancia, 2=E <= tolerancia",1,2,"1")==1;
+            std::string t=s.leer("Tolerancia adicional del residuo (deben cumplirse AMBAS) [ENTER=sin doble corte]: ");
+            if(!t.empty()){tolResiduo=Expresion(t).evaluar(0,false,false);if(tolResiduo<=0)throw std::runtime_error("Tolerancia de residuo positiva requerida.");}
+        }
+        dibujar=s.entero("Generar grafico SVG y tabla CSV al terminar: 0=no, 1=si",0,1,"0")==1;
+    }
     auto valor=[&](double x){double y=evaluar(f,x);return fijo?finito(y-x):y;};
     s.hoja<<nombres[metodo]<<"\n"<<(fijo?"g(x) = ":"f(x) = ")<<f<<'\n';
     const char *formulas[]={"x_n = a + (b-a)/2", "x_n = a - f(a)*(b-a)/(f(b)-f(a))",
@@ -46,8 +60,13 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
     const char *errores[]={"", "|x_n-x_(n-1)|", "100*|x_n-x_(n-1)|/|x_n| (%)",
         "100*|x_n-x_(n-1)|/(|x_n+x_(n-1)|/2) (%)", "residuo absoluto", "(b-a)/2 antes de actualizar el intervalo"};
     s.hoja<<"Criterio elegido E = "<<errores[criterio]<<'\n';
-    if(modo==1)s.hoja<<"Corte: E <= "<<tol<<"; maximo "<<maxit<<" iteraciones.\n";
-    else s.hoja<<"Se solicitan "<<maxit<<" iteraciones; no se afirma convergencia por cantidad de pasos.\n";
+    if(modo==1){s.hoja<<"Corte: E "<<(estricto?"< ":"<= ")<<tol;
+        if(tolResiduo>0)s.hoja<<" Y residuo "<<(estricto?"< ":"<= ")<<tolResiduo;
+        s.hoja<<"; maximo "<<maxit<<" iteraciones.\n";}
+    if(anteriorInicial)s.hoja<<"Aproximacion previa al primer paso = "<<viejo<<'\n';
+    if(fijo)s.hoja<<"Punto fijo relajado: x_n=(1-lambda)*x_(n-1)+lambda*g(x_(n-1)); lambda="<<lambda<<'\n';
+    if(metodo==NEWTON)s.hoja<<"C_k=|x_(k+1)-x_k|/|x_k-x_(k-1)|^2; C_k se conoce al calcular x_(k+1). Para C3 pedir 4 pasos.\n";
+    if(modo==2)s.hoja<<"Se solicitan "<<maxit<<" iteraciones; no se afirma convergencia por cantidad de pasos.\n";
     if(!df.empty())s.hoja<<(fijo?"g'(x) = ":"f'(x) = ")<<df<<'\n';
     else if(metodo==NEWTON)s.hoja<<"f' aproximada por diferencia central; este resultado usa Newton con derivada numerica.\n";
     double fa=0,fb=0,raiz=viejo,fr=0,elegido=std::numeric_limits<double>::infinity();
@@ -69,13 +88,14 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
     if(cerrado)s.hoja<<"n | a | b | f(a) | f(b) | x_n | f(x_n) | E_abs | E_rel% | E_IUA% | cota_biseccion\n";
     else if(metodo==SECANTE)s.hoja<<"n | x_(n-2) | x_(n-1) | f_anterior | f_actual | x_n | f(x_n) | E_abs | E_rel% | E_IUA%\n";
     else s.hoja<<"n | x_(n-1) | "<<(fijo?"g(x_(n-1))":"f(x_(n-1))")<<" | "<<(fijo?"g'(x_(n-1))":"f'(x_(n-1))")<<" | x_n | residuo | E_abs | E_rel% | E_IUA%\n";
+    double pasoAnterior=0,pasoAnteAnterior=0;
     for(int k=1;k<=maxit && !terminada;++k){
         double xn=0,d=0,cota=0,fp=0,fv=0;
         if(cerrado){
             cota=finito(b/2-a/2);
             if(metodo==BISECCION)xn=finito(a/2+b/2);
             else {double den=finito(fb-fa); if(den==0){motivo="Denominador nulo en regula falsi.";break;} xn=finito(a-fa*(finito(b-a)/den));}
-        }else if(fijo){xn=evaluar(f,viejo);try{d=df.empty()?derivadaNumerica(f,viejo):evaluar(df,viejo);}catch(const std::exception &){d=std::numeric_limits<double>::quiet_NaN();}}
+        }else if(fijo){xn=finito((1-lambda)*viejo+lambda*evaluar(f,viejo));try{d=df.empty()?derivadaNumerica(f,viejo):evaluar(df,viejo);}catch(const std::exception &){d=std::numeric_limits<double>::quiet_NaN();}}
         else if(metodo==NEWTON){
             fv=valor(viejo);d=df.empty()?derivadaNumerica(f,viejo):evaluar(df,viejo);
             if(d==0){motivo="Derivada nula: no se puede realizar el paso de Newton.";break;}
@@ -86,7 +106,7 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
             xn=finito(viejo-fv*(finito(viejo-previo)/den));
         }
         double fn=valor(xn),ea=std::fabs(xn-viejo),er=errorRel(xn,viejo),ei=errorRel(xn,viejo,true);
-        bool tieneAnterior=!cerrado || k>1;
+        bool tieneAnterior=!cerrado || anteriorInicial || k>1;
         elegido=criterio==1?ea:criterio==2?er:criterio==3?ei:criterio==4?std::fabs(fn):cota;
         if(cerrado){
             s.hoja<<k<<" | "<<a<<" | "<<b<<" | "<<fa<<" | "<<fb<<" | "<<xn<<" | "<<fn<<" | ";
@@ -96,18 +116,37 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
         else s.hoja<<"-- | -- | --";
         if(cerrado) {s.hoja<<" | ";if(metodo==BISECCION)s.hoja<<cota;else s.hoja<<"--";}
         s.hoja<<'\n';
+        if(!ref.empty()){
+            s.hoja<<"Error verdadero iteracion "<<k<<": absoluto="<<std::fabs(xn-exacto);
+            if(exacto!=0)s.hoja<<"; porcentual="<<100*std::fabs(xn-exacto)/std::fabs(exacto);
+            s.hoja<<'\n';
+        }
+        if(metodo==NEWTON && k>=2){
+            s.hoja<<"C["<<k-1<<"] = ";
+            if(pasoAnterior>0){double ck=(ea/pasoAnterior)/pasoAnterior;
+                if(std::isfinite(ck))s.hoja<<ck;else s.hoja<<"no definido: fuera de rango";}
+            else s.hoja<<"no definido: paso anterior cero";
+            s.hoja<<'\n';
+        }
+        if(k>=3 && ea>0 && pasoAnterior>0 && pasoAnteAnterior>0){
+            double den=std::log(pasoAnterior/pasoAnteAnterior),num=std::log(ea/pasoAnterior);
+            if(den!=0 && std::isfinite(den) && std::isfinite(num))s.hoja<<"Orden observado p (pasos, sensible al redondeo) = "<<num/den<<'\n';
+        }
+        if(tieneAnterior){pasoAnteAnterior=pasoAnterior;pasoAnterior=ea;}
         if(k==1){
             s.hoja<<"Primer reemplazo: ";
             if(metodo==BISECCION)s.hoja<<"("<<a<<" + "<<b<<")/2 = "<<xn;
             else if(metodo==FALSA_POSICION)s.hoja<<a<<" - ("<<fa<<")*("<<b<<"-"<<a<<")/("<<fb<<"-("<<fa<<")) = "<<xn;
             else if(metodo==NEWTON)s.hoja<<viejo<<" - ("<<fv<<")/("<<d<<") = "<<xn;
             else if(metodo==SECANTE)s.hoja<<viejo<<" - ("<<fv<<")*("<<viejo<<"-("<<previo<<"))/("<<fv<<"-("<<fp<<")) = "<<xn;
-            else s.hoja<<"g("<<viejo<<") = "<<xn;
+            else s.hoja<<"("<<1-lambda<<")*("<<viejo<<") + ("<<lambda<<")*g("<<viejo<<") = "<<xn;
             s.hoja<<'\n';
         }
         raiz=xn;fr=fn;kfin=k;
-        if(fn==0){exacta=true;convergio=true;terminada=true;motivo="Residuo cero en aritmetica de maquina.";}
-        else if(modo==1 && (criterio>=4 || tieneAnterior) && elegido<=tol){convergio=true;terminada=true;motivo="Se alcanzo la tolerancia del criterio elegido.";}
+        bool cumpleE=estricto?elegido<tol:elegido<=tol;
+        bool cumpleR=tolResiduo==0 || (estricto?std::fabs(fn)<tolResiduo:std::fabs(fn)<=tolResiduo);
+        if(fn==0 && (tolResiduo==0 || modo==2 || ((criterio>=4 || tieneAnterior) && cumpleE))){exacta=true;convergio=true;terminada=true;motivo="Residuo cero en aritmetica de maquina.";}
+        else if(modo==1 && (criterio>=4 || tieneAnterior) && cumpleE && cumpleR){convergio=true;terminada=true;motivo="Se alcanzo la tolerancia del criterio elegido.";}
         // No continuar miles de veces con el mismo valor por redondeo.
         else if((cerrado && (xn==a || xn==b)) || (tieneAnterior && xn==viejo)){
             terminada=true;motivo="Estancamiento por precision de maquina; no se confirma la tolerancia pedida.";
@@ -128,11 +167,17 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
         try{double d=df.empty()?derivadaNumerica(f,raiz):evaluar(df,raiz);
             s.hoja<<"|g'(ultima aproximacion)| = "<<std::fabs(d)<<" ("<<(df.empty()?"estimacion numerica":"derivada ingresada")<<").\n";}
         catch(const std::exception &){s.hoja<<"No se pudo evaluar g' en el ultimo punto.\n";}
-        s.hoja<<"Para garantizar convergencia por contraccion se requiere un intervalo I con g(I) incluido en I\n"
-              <<"y |g'(x)| <= q < 1 en TODO I. Un valor puntual no demuestra ni descarta esa condicion.\n";
+        try{double dg=df.empty()?derivadaNumerica(f,raiz):evaluar(df,raiz);
+            s.hoja<<"|g_relajada'(ultima aproximacion)| = "<<std::fabs(1-lambda+lambda*dg)<<'\n';}
+        catch(const std::exception &){}
+        s.hoja<<"Para garantizar convergencia por contraccion de h(x)=(1-lambda)*x+lambda*g(x), se requiere h(I) incluido en I\n"
+              <<"y |h'(x)| <= q < 1 en TODO I. Un valor puntual no demuestra ni descarta esa condicion.\n";
     }
+    s.hoja<<"A diez decimales: x = "<<fijo10(raiz)<<'\n';
     if(!ref.empty())errorExacto(s.hoja,raiz,exacto);
     s.mostrar();
+    if(dibujar)graficoFuncion(s,[&](double x){return valor(x);},"funcion",fijo?"g(x)-x":f);
+
 }
 }
 #endif

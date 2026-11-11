@@ -1,6 +1,6 @@
 #ifndef RECUP1_SPLINES_H
 #define RECUP1_SPLINES_H
-#include "base.h"
+#include "graficos.h"
 namespace recup {
 struct Spline {
     Vec x,a,b,c,d;
@@ -82,7 +82,7 @@ inline void splines(Sesion &s){
     s.hoja<<"El spline lineal solo exige salto S=0; el cuadratico tambien salto S'=0; el cubico tambien salto S''=0.\n";
     s.mostrar();
     for(;;){
-        int op=s.entero("1=evaluar spline y derivadas, 2=tabla equiespaciada, 3=integral por tramos, 0=salir",0,3,"1");if(!op)break;
+        int op=s.entero("1=evaluar spline y derivadas, 2=tabla equiespaciada, 3=integral por tramos, 4=grafico SVG/CSV, 0=salir",0,4,"1");if(!op)break;
         if(op==1){double q=s.num("x a evaluar");int i=sp.tramo(q);double v=sp.valor(i,q);
             s.hoja<<"EVALUACION DEL SPLINE "<<nombres[tipo]<<"\n"<<p.x[i]<<" <= "<<q<<" <= "<<p.x[i+1]<<"; corresponde el tramo "<<i<<".\n"
                   <<"t="<<q<<"-("<<p.x[i]<<")="<<q-p.x[i]<<"\nS(x)="<<sp.a[i]<<"+t*("<<sp.b[i]<<"+t*("<<sp.c[i]<<"+t*("<<sp.d[i]<<")))\n"
@@ -103,6 +103,9 @@ inline void splines(Sesion &s){
             for(int j=0;j<=cantidad;++j){double q=j==cantidad?p.x.back():p.x.front()+j*paso;int i=sp.tramo(q);double v=sp.valor(i,q);xs.push_back(q);ys.push_back(v);
                 s.hoja<<j<<" | "<<q<<" | "<<v<<" | "<<i;if(!f.empty()){double exacto=evaluar(f,q);s.hoja<<" | "<<exacto<<" | "<<std::fabs(v-exacto);}s.hoja<<'\n';}
             s.hoja<<"\nLISTAS PARA PEGAR EN OTRO PROGRAMA\nx:\n";for(double q:xs)s.hoja<<q<<' ';s.hoja<<"\ny:\n";for(double v:ys)s.hoja<<v<<' ';s.hoja<<'\n';
+        }else if(op==4){
+            graficoFuncion(s,[&](double q){return sp.valor(sp.tramo(q),q);},"spline","Spline",&p,f);
+            continue;
         }else {
             double a=s.num("Limite inferior",numero(p.x.front())),b=s.num("Limite superior",numero(p.x.back()));
             if(a>b)throw std::runtime_error("Se requiere limite inferior <= superior.");

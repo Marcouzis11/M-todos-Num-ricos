@@ -24,7 +24,10 @@ inline double finito(double v) {
     return v;
 }
 inline std::string numero(double x) {
-    std::ostringstream s; s << std::setprecision(12) << x; return s.str();
+    std::ostringstream s; s << std::setprecision(17) << x; return s.str();
+}
+inline std::string fijo10(double x) {
+    std::ostringstream s; s << std::fixed << std::setprecision(10) << x; return s.str();
 }
 inline std::string trim(std::string s) {
     const auto a=s.find_first_not_of(" \t\r\n");
@@ -70,6 +73,7 @@ class Expresion {
             if(nombre=="exp") return controlar(std::exp(a));
             if(nombre=="ln" || nombre=="log") return controlar(std::log(a));
             if(nombre=="log10") return controlar(std::log10(a));
+            if(nombre=="cbrt") return controlar(std::cbrt(a));
             if(nombre=="sqrt" || nombre=="raiz") return controlar(std::sqrt(a));
             if(nombre=="abs") return controlar(std::fabs(a));
             throw std::runtime_error("Funcion desconocida: "+nombre);
@@ -115,7 +119,7 @@ public:
         archivo.open(ruta.c_str(),std::ios::app);
         if(!archivo) std::cout<<"AVISO: no se pudo abrir "<<ruta<<". La salida sigue en consola.\n";
         else archivo<<"\n================ NUEVO EJERCICIO ================\n";
-        hoja<<std::setprecision(12);
+        hoja<<std::setprecision(15);
         std::cout<<"\nFunciones por teclado: x^3, exp(-x), ln(x), sqrt(x), sen(x), pi.\n"
                  <<"Angulos en radianes. Decimales con punto o coma. Escribi salir para terminar.\n";
     }

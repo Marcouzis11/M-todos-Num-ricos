@@ -1,6 +1,6 @@
 #ifndef RECUP1_INTERPOLACION_H
 #define RECUP1_INTERPOLACION_H
-#include "base.h"
+#include "graficos.h"
 namespace recup {
 // Multiplica un polinomio en potencias ascendentes por (x-r).
 inline Vec porBinomio(const Vec &c,double r){
@@ -101,14 +101,22 @@ inline void interpolacion(Sesion &s){
         }
     };
     for(;;){
-        int op=s.entero("1=Evaluar en un x, 2=generar tabla, 0=salir",0,2,"1");if(!op)break;
+        int op=s.entero("1=Evaluar en un x, 2=generar tabla, 3=grafico SVG/CSV, 0=salir",0,3,"1");if(!op)break;
         if(op==1){consulta(s.num("x a evaluar"));}
-        else {
+        else if(op==3){
+            graficoFuncion(s,[&](double q){return lagrangeValor(p,q);},"interpolacion","Polinomio interpolador",&p,f);
+            continue;
+        }else {
             double a=s.num("Inicio de tabla",numero(p.x.front())),b=s.num("Fin de tabla",numero(p.x.back()));
             if(b<=a)throw std::runtime_error("La tabla requiere inicio < fin.");
             int intervalos=s.entero("Cantidad de subintervalos",1,1000,"10");
-            s.hoja<<"TABLA DEL POLINOMIO: h="<<(b-a)/intervalos<<"\n i | x_i | P(x_i)\n";
-            for(int i=0;i<=intervalos;++i){double q=i==intervalos?b:a+(b-a)*i/intervalos;s.hoja<<i<<" | "<<q<<" | "<<lagrangeValor(p,q)<<'\n';}
+            s.hoja<<"TABLA DEL POLINOMIO: h="<<(b-a)/intervalos<<"\n i | x_i | P(x_i)";
+            if(!f.empty())s.hoja<<" | f(x_i) | error absoluto";
+            s.hoja<<'\n';
+            for(int i=0;i<=intervalos;++i){double q=i==intervalos?b:a+(b-a)*i/intervalos;double v=lagrangeValor(p,q);
+                s.hoja<<i<<" | "<<q<<" | "<<v;
+                if(!f.empty()){double real=evaluar(f,q);s.hoja<<" | "<<real<<" | "<<std::fabs(v-real);}
+                s.hoja<<'\n';}
         }
         s.mostrar();
     }

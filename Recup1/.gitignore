@@ -13,3 +13,8 @@ CODIGO/Interpolacion/interpolacion
 CODIGO/Interpolacion/Spline
 CODIGO/Regresión/regresionLineal
 CODIGO/Regresión/polynomialRegression
+
+# Configuracion local y graficos generados.
+compilador.local.bat
+**/grafico_*.svg
+**/grafico_*.csv
