@@ -17,9 +17,9 @@ struct Spline {
     }
     double primitiva(int i,double q) const {double t=q-x[i];return finito(t*(a[i]+t*(b[i]/2+t*(c[i]/3+t*d[i]/4))));}
 };
-inline void splines(Sesion &s){
-    Puntos p=puntos(s,true);int n=static_cast<int>(p.x.size())-1;
-    int tipo=s.entero("Spline: 1=lineal, 2=cuadratico, 3=cubico natural (normal), 4=cubico sujeto (pendientes dadas)",1,4,"3");
+inline void splines(Sesion &s,const Puntos *original=nullptr,int seleccionado=0){
+    Puntos p=puntos(s,true,original);int n=static_cast<int>(p.x.size())-1;
+    int tipo=seleccionado?seleccionado:s.entero("Spline: 1=lineal, 2=cuadratico, 3=cubico natural (normal), 4=cubico sujeto (pendientes dadas)",1,4,"3");
     std::string f=s.funcion("f(x) de referencia [ENTER=solo tabla]",true);
     Spline sp{p.x,p.y,Vec(n,0),Vec(n,0),Vec(n,0),tipo<3?tipo:3};
     Vec h(n),delta(n);for(int i=0;i<n;++i){h[i]=finito(p.x[i+1]-p.x[i]);delta[i]=finito((p.y[i+1]-p.y[i])/h[i]);}
@@ -58,7 +58,7 @@ inline void splines(Sesion &s){
         Tabla sistema({"Fila","subdiagonal","diagonal","superdiagonal","b"});
         for(int i=0;i<=n;++i)sistema.fila({i,sub[i],diag[i],sup[i],rhs[i]});
         sistema.mostrar(s.hoja);
-        s.hoja<<"\nEliminacion de Thomas:\n";
+        s.hoja<<"\nEliminacion de Thomas: no se aplica pivoteo parcial.\n";
         for(int i=1;i<=n;++i){if(diag[i-1]==0)throw std::runtime_error("Pivote nulo en Thomas.");
             double mult=sub[i]/diag[i-1];diag[i]=finito(diag[i]-mult*sup[i-1]);rhs[i]=finito(rhs[i]-mult*rhs[i-1]);
             s.hoja<<"Fila "<<i<<": multiplicador="<<mult<<"; diagonal nueva="<<diag[i]<<"; termino nuevo="<<rhs[i]<<'\n';}

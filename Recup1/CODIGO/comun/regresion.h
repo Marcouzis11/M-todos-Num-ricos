@@ -28,20 +28,68 @@ inline Vec minimosCuadrados(Mat a,Vec b){
     for(int j=0;j<m;++j)z[j]=finito(z[j]/escala[j]);
     return z;
 }
-inline void normales(std::ostream &out,const Mat &phi,const Vec &y,bool pasos){
+inline void normales(std::ostream &out,const Mat &phi,const Vec &y,bool pasos,bool recta=false){
     int n=static_cast<int>(phi.size()),m=static_cast<int>(phi[0].size());Mat a(m,Vec(m,0));Vec b(m,0);
     for(int j=0;j<m;++j)for(int i=0;i<n;++i){b[j]=finito(b[j]+phi[i][j]*y[i]);
         for(int k=0;k<m;++k)a[j][k]=finito(a[j][k]+phi[i][j]*phi[i][k]);}
-    out<<"\nECUACIONES NORMALES: (Phi^T*Phi)*c=Phi^T*y\n"
-       <<"S(c)=suma_i (y_i - suma_j c_j*phi_j(x_i))^2.\n"
-       <<"dS/dc_j=-2*suma_i phi_j(x_i)*(y_i-suma_k c_k*phi_k(x_i))=0.\n"
-       <<"Por lo tanto: suma_k [suma_i phi_j(x_i)*phi_k(x_i)] c_k = suma_i phi_j(x_i)*y_i.\n";
-    matriz(out,a,b);
+    if(recta){
+        // La base interna es [1,x]. Para la hoja usamos el orden [a,b] de f(x)=a*x+b.
+        std::swap(a[0],a[1]);for(Vec &fila:a)std::swap(fila[0],fila[1]);std::swap(b[0],b[1]);
+        titulo(out,"DERIVADAS PARCIALES Y ECUACIONES NORMALES",'-');
+        out<<"Modelo: f(x) = a*x + b.\n"
+           <<"a: pendiente; b: ordenada al origen.\n"
+           <<"Puntos (x_i,y_i), i=0,...,n: n="<<n-1<<"; cantidad de datos n+1="<<n<<".\n"
+           <<u8"Todas las sumatorias \u03a3 van desde i=0 hasta n.\n"
+           <<"Se minimiza S(a,b) = suma_i [y_i - (a*x_i + b)]^2.\n"
+           <<"Derivamos respecto de los coeficientes a y b e igualamos a cero:\n\n"
+           <<"dS/da = -2*suma_i x_i*[y_i - (a*x_i+b)] = 0\n"
+           <<"dS/db = -2*suma_i [y_i - (a*x_i+b)] = 0\n\n"
+           <<"Al desarrollar y agrupar las sumatorias:\n"
+           <<"  a*suma(x_i^2) + b*suma(x_i) = suma(x_i*y_i)\n"
+           <<"  a*suma(x_i)   + b*(n+1)     = suma(y_i)\n\n"
+           <<"Reemplazando por las sumas de los datos:\n"
+           <<"  ("<<a[0][0]<<")*a + ("<<a[0][1]<<")*b = "<<b[0]<<'\n'
+           <<"  ("<<a[1][0]<<")*a + ("<<a[1][1]<<")*b = "<<b[1]<<'\n';
+        out<<"\nMATRIZ AUMENTADA: incognitas en orden [a, b]\n"
+           <<u8"[ \u03a3(x_i^2)  \u03a3(x_i) | \u03a3(x_i*y_i) ]\n"
+           <<u8"[ \u03a3(x_i)    n+1    | \u03a3(y_i)     ]\n"
+           <<u8"La entrada n+1 equivale a \u03a3(1): se suma un 1 por cada dato.\n";
+        Tabla tabla({"Fila","coef. de a","coef. de b","termino indep."});
+        for(int i=0;i<2;++i)tabla.fila({i+1,a[i][0],a[i][1],b[i]});
+        tabla.mostrar(out);
+    }else{
+        out<<"\nECUACIONES NORMALES: (Phi^T*Phi)*c=Phi^T*y\n"
+           <<"S(c)=suma_i (y_i - suma_j c_j*phi_j(x_i))^2.\n"
+           <<"dS/dc_j=-2*suma_i phi_j(x_i)*(y_i-suma_k c_k*phi_k(x_i))=0.\n"
+           <<"Por lo tanto: suma_k [suma_i phi_j(x_i)*phi_k(x_i)] c_k = suma_i phi_j(x_i)*y_i.\n";
+        out<<"\nUna derivada parcial y una ecuacion por coeficiente:\n";
+        for(int j=0;j<m;++j){
+            out<<"dS/dc"<<j<<" = -2*suma_i phi"<<j<<"(x_i)*[y_i - modelo_i] = 0\n";
+            for(int k=0;k<m;++k)out<<(k?" + ":"  ")<<"suma(phi"<<j<<"*phi"<<k<<")*c"<<k;
+            out<<" = suma(phi"<<j<<"*y)\n";
+            for(int k=0;k<m;++k)out<<(k?" + ":"  ")<<"("<<a[j][k]<<")*c"<<k;
+            out<<" = "<<b[j]<<'\n';
+        }
+        out<<"\nMATRIZ AUMENTADA: incognitas en orden [c0";
+        for(int j=1;j<m;++j)out<<", c"<<j;
+        out<<"]\n";matriz(out,a,b);
+    }
     if(pasos){
         out<<"\nDesarrollo por Gauss del sistema normal (para escribir en la hoja):\n";
-        try{Vec c=gauss(a,b,&out).x;for(int j=0;j<m;++j)out<<"c"<<j<<" = "<<c[j]<<'\n';}
+        if(recta)out<<"En los pasos de Gauss: x1=a y x2=b; a1 y a2 son las columnas de coeficientes.\n"
+                    <<"La ultima columna contiene los terminos independientes.\n";
+        else out<<"En los pasos de Gauss: x1=c0, x2=c1, etc.\n";
+        try{Vec c=gauss(a,b,&out).x;
+            if(recta)out<<"Solucion por Gauss: a = "<<c[0]<<"; b = "<<c[1]<<'\n';
+            else for(int j=0;j<m;++j)out<<"c"<<j<<" = "<<c[j]<<'\n';}
         catch(const std::exception &e){out<<"No se usa este sistema para calcular el resultado: "<<e.what()<<'\n';}
     }
+}
+inline void funcionRecta(std::ostream &out,const Vec &c){
+    out<<"f(x) = a*x + b\n"
+       <<"a (pendiente) = "<<c[1]<<"\nb (ordenada al origen) = "<<c[0]<<'\n'
+       <<"f(x) = "<<c[1]<<"*x"<<(c[0]<0?" - ":" + ")<<std::fabs(c[0])<<'\n'
+       <<"Equivalencia con los coeficientes internos: a=c1; b=c0.\n";
 }
 inline Vec convertirPolinomio(const Vec &ct,double centro,double escala){
     // Horner simbolico en t=(x-centro)/escala, acumulando coeficientes en x.
@@ -51,10 +99,11 @@ inline Vec convertirPolinomio(const Vec &ct,double centro,double escala){
         d[0]=finito(d[0]+ct[j]);c=d;}
     return c;
 }
-inline void regresion(Sesion &s,bool soloRecta){
-    Puntos p=puntos(s,false);int n=static_cast<int>(p.x.size());
-    int tipo=soloRecta?1:s.entero("Ajuste: 1=polinomico, 2=base de funciones, 3=exponencial a*exp(b*x), 4=potencial a*x^b, 5=logaritmico a+b*ln(x), 6=saturacion a*x/(b+x)",1,6,"1");
+inline void regresion(Sesion &s,bool soloRecta,const Puntos *original=nullptr,int seleccionado=0){
+    Puntos p=puntos(s,false,original);int n=static_cast<int>(p.x.size());
+    int tipo=soloRecta?1:seleccionado?seleccionado:s.entero("Ajuste: 1=polinomico, 2=base de funciones, 3=exponencial a*exp(b*x), 4=potencial a*x^b, 5=logaritmico a+b*ln(x), 6=saturacion a*x/(b+x)",1,6,"1");
     int grado=soloRecta?1:tipo==1?s.entero("Grado del polinomio (0=constante, 1=recta, 2=parabola)",0,std::min(10,n-1),std::to_string(std::min(2,n-1))):1;
+    const bool recta=tipo==1 && grado==1;
     int m=grado+1;Vec u=p.x,v=p.y;std::vector<std::string> base;
     double centro=0,escala=1;
     if(tipo==2){m=s.entero("Cantidad de funciones de base",1,std::min(10,n),"2");
@@ -74,28 +123,35 @@ inline void regresion(Sesion &s,bool soloRecta){
     s.hoja<<"Base del sistema: ";for(int j=0;j<m;++j)s.hoja<<"phi"<<j<<"="<<base[j]<<"; ";s.hoja<<"\n";
     if(tipo>=3)s.hoja<<"En el sistema linealizado, la variable x de la base representa u.\n";
     if(tipo!=2){
-        s.hoja<<"\nTABLA DE SUMATORIAS (u=x, v=y si no hay transformacion)\n";
-        std::vector<std::string> columnas={"i","u","v"};
-        for(int k=2;k<=2*grado;++k)columnas.push_back("u^"+std::to_string(k));
-        for(int k=1;k<=grado;++k)columnas.push_back("u^"+std::to_string(k)+"*v");
-        columnas.push_back("v^2");Tabla tabla(columnas);
+        s.hoja<<(recta?"\nTABLA DE SUMATORIAS PARA f(x)=a*x+b\n":"\nTABLA DE SUMATORIAS (u=x, v=y si no hay transformacion)\n");
+        const std::string variable=recta?"x":"u",ordenada=recta?"y":"v";
+        std::vector<std::string> columnas={"i",variable,ordenada};
+        for(int k=2;k<=2*grado;++k)columnas.push_back(variable+"^"+std::to_string(k));
+        for(int k=1;k<=grado;++k)columnas.push_back(variable+"^"+std::to_string(k)+"*"+ordenada);
+        columnas.push_back(ordenada+"^2");Tabla tabla(columnas);
         Vec sumas(2*grado+1,0),productos(grado+1,0);double v2=0;
         for(int i=0;i<n;++i){std::vector<Celda> fila={i,u[i],v[i]};
             for(int k=0;k<=2*grado;++k){double t=finito(std::pow(u[i],k));sumas[k]=finito(sumas[k]+t);if(k>=2)fila.push_back(t);}
             for(int k=0;k<=grado;++k){double t=finito(std::pow(u[i],k)*v[i]);productos[k]=finito(productos[k]+t);if(k>=1)fila.push_back(t);}
             double t=finito(v[i]*v[i]);v2=finito(v2+t);fila.push_back(t);tabla.fila(fila);}
         tabla.mostrar(s.hoja);
-        s.hoja<<"\nSUMAS: n="<<n<<'\n';
-        for(int k=0;k<=2*grado;++k)s.hoja<<"  suma u^"<<k<<" = "<<sumas[k]<<'\n';
-        for(int k=0;k<=grado;++k)s.hoja<<"  suma u^"<<k<<"*v = "<<productos[k]<<'\n';
-        s.hoja<<"  suma v^2 = "<<v2<<'\n';
+        if(recta){
+            s.hoja<<"\nSUMAS (i=0,...,n): n="<<n-1<<"; n+1="<<n<<'\n'
+                  <<"  suma x = "<<sumas[1]<<"\n  suma y = "<<productos[0]
+                  <<"\n  suma x^2 = "<<sumas[2]<<"\n  suma x*y = "<<productos[1]<<"\n  suma y^2 = "<<v2<<'\n';
+        }else{
+            s.hoja<<"\nSUMAS: n="<<n<<'\n';
+            for(int k=0;k<=2*grado;++k)s.hoja<<"  suma u^"<<k<<" = "<<sumas[k]<<'\n';
+            for(int k=0;k<=grado;++k)s.hoja<<"  suma u^"<<k<<"*v = "<<productos[k]<<'\n';
+            s.hoja<<"  suma v^2 = "<<v2<<'\n';
+        }
     }else{
         s.hoja<<"\nVALORES DE LAS FUNCIONES DE BASE\n";
         std::vector<std::string> columnas={"i","y"};for(int j=0;j<m;++j)columnas.push_back("phi"+std::to_string(j));
         Tabla tabla(columnas);for(int i=0;i<n;++i){std::vector<Celda> fila={i,v[i]};for(double z:phi[i])fila.push_back(z);tabla.fila(fila);}
         tabla.mostrar(s.hoja);
     }
-    normales(s.hoja,phi,v,true);
+    normales(s.hoja,phi,v,true,recta);
     Mat estable=phi;
     // Para polinomios y linealizaciones afines se centra la variable antes de QR.
     if(tipo!=2 && grado>0){
@@ -105,14 +161,16 @@ inline void regresion(Sesion &s,bool soloRecta){
         for(int i=0;i<n;++i)for(int j=0;j<m;++j)estable[i][j]=std::pow((u[i]-centro)/escala,j);
     }
     Vec ct=minimosCuadrados(estable,v),c=tipo==2?ct:convertirPolinomio(ct,centro,escala);
-    s.hoja<<"\nRESULTADO (calculado por QR para evitar perdida de precision de las ecuaciones normales)\n";
+    titulo(s.hoja,"RESULTADO: FUNCION AJUSTADA",'-');
+    if(recta)funcionRecta(s.hoja,c);
+    s.hoja<<"Coeficientes calculados por QR para evitar perdida de precision de las ecuaciones normales:\n";
     for(int j=0;j<m;++j)s.hoja<<"c"<<j<<" = "<<c[j]<<'\n';
     if(tipo!=2){
         s.hoja<<"Coordenada de calculo estable: t=(u-("<<centro<<"))/("<<escala<<").\nCoeficientes en t:\n";
         for(int j=0;j<m;++j)s.hoja<<"d"<<j<<" = "<<ct[j]<<'\n';
     }
     double aa=0,bb=0;
-    if(tipo==1)polinomio(s.hoja,c,"y ajustado");
+    if(tipo==1){if(!recta)polinomio(s.hoja,c,"f(x)");}
     else if(tipo==2){s.hoja<<"y ajustado = ";for(int j=0;j<m;++j)s.hoja<<(j?" + ":"")<<"("<<c[j]<<")*("<<base[j]<<")";s.hoja<<'\n';}
     else if(tipo==3 || tipo==4){aa=finito(std::exp(c[0]));bb=c[1];s.hoja<<"MODELO ORIGINAL: y = "<<aa<<(tipo==3?"*exp((":"*x^(")<<bb<<(tipo==3?")*x)":")")<<'\n';}
     else if(tipo==5)s.hoja<<"MODELO ORIGINAL: y = "<<c[0]<<" + ("<<c[1]<<")*ln(x)\n";
@@ -135,11 +193,12 @@ inline void regresion(Sesion &s,bool soloRecta){
         if(tipo==1)maxexp=std::max(maxexp,std::fabs(poli(c,p.x[i])-pred));
         residuos.fila({i,p.x[i],p.y[i],pred,err,err*err});}
     residuos.mostrar(s.hoja);
+    const std::string cantidad=recta?"(n+1)":"n",gradosLibertad=recta?"n+1-m":"n-m";
     s.hoja<<"Media y = "<<media<<"\nSr = suma e_i^2 = "<<sr<<"\nSt = suma (y_i-media)^2 = "<<st
-          <<"\nECM (error cuadratico medio, sin raiz) = Sr/n = "<<sr/n
-          <<"\nRMSE (raiz del ECM) = sqrt(Sr/n) = "<<std::sqrt(sr/n)<<'\n';
-    if(n>m)s.hoja<<"Error estandar estimado s_y/x = sqrt(Sr/(n-m)) = "<<std::sqrt(sr/(n-m))<<"; m="<<m<<" coeficientes.\n";
-    else s.hoja<<"Error estandar estimado: no definido, n-m=0 (sin grados de libertad residuales).\n";
+          <<"\nECM (error cuadratico medio, sin raiz) = Sr/"<<cantidad<<" = "<<sr/n
+          <<"\nRMSE (raiz del ECM) = sqrt(Sr/"<<cantidad<<") = "<<std::sqrt(sr/n)<<'\n';
+    if(n>m)s.hoja<<"Error estandar estimado s_y/x = sqrt(Sr/("<<gradosLibertad<<")) = "<<std::sqrt(sr/(n-m))<<"; m="<<m<<" coeficientes.\n";
+    else s.hoja<<"Error estandar estimado: no definido, "<<gradosLibertad<<"=0 (sin grados de libertad residuales).\n";
     if(st>0){double r2=1-sr/st;s.hoja<<"R^2 = 1-Sr/St = "<<r2<<'\n';
         if(((tipo==1 && grado>1) || tipo==2) && r2>=0)s.hoja<<"Indice de correlacion multiple R=sqrt(R^2) = "<<std::sqrt(r2)<<" (no es el r de Pearson).\n";
         if(r2<0)s.hoja<<"sqrt(R^2) no es real: el ajuste es peor que usar la media. No se toma valor absoluto.\n";

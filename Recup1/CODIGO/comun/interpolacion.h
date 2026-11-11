@@ -45,10 +45,10 @@ inline double lagrangeValor(const Puntos &p,double q){
         long double t=w/(static_cast<long double>(q)-p.x[i]);numerador+=t*p.y[i];denominador+=t;}
     return finito(static_cast<double>(numerador/denominador));
 }
-inline void interpolacion(Sesion &s){
-    Puntos p=puntos(s,true);int n=static_cast<int>(p.x.size());
+inline void interpolacion(Sesion &s,const Puntos *original=nullptr,int seleccionado=0){
+    Puntos p=puntos(s,true,original);int n=static_cast<int>(p.x.size());
     if(n>20)throw std::runtime_error("Para el polinomio unico usa hasta 20 puntos; para mas puntos usa Spline.cpp.");
-    int metodo=s.entero("Metodo: 1=Lagrange, 2=polinomica (Vandermonde + Gauss), 3=Newton (diferencias divididas)",1,3,"1");
+    int metodo=seleccionado?seleccionado:s.entero("Metodo: 1=Lagrange, 2=polinomica (Vandermonde + Gauss), 3=Newton (diferencias divididas)",1,3,"1");
     std::string f=s.funcion("f(x) de referencia [ENTER=solo datos, sin error verdadero]",true);
     std::string cotaTxt=s.leer("Cota M de |f^(n)(x)| (n=cantidad de puntos) [ENTER=sin cota teorica]: ");
     double m=0;if(!cotaTxt.empty()){m=Expresion(cotaTxt).evaluar(0,false,false);if(m<0)throw std::runtime_error("La cota M no puede ser negativa.");}

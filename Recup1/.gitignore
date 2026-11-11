@@ -13,6 +13,7 @@ CODIGO/Interpolacion/interpolacion
 CODIGO/Interpolacion/Spline
 CODIGO/Regresión/regresionLineal
 CODIGO/Regresión/polynomialRegression
+CODIGO/menu
 
 # Configuracion local y graficos generados.
 compilador.local.bat

@@ -18,14 +18,16 @@ Los cambios están aplicados en `C:\Users\marco\OneDrive\Documentos\GitHub\M-tod
 
 En **raíces**, después de la referencia, aparece `Opciones adicionales`. Elegí `1` para configurar las variantes; ENTER conserva las opciones normales. En métodos cerrados podés dar, por ejemplo, `3.2` como aproximación previa para el parcial 2025. En punto fijo podés dar `0.7` como lambda.
 
-En **sistemas iterativos**, los criterios nuevos son:
+En **sistemas iterativos**, el menú de errores ahora usa los nombres del enunciado:
 
-- **6:** paso y residuo en norma infinito.
-- **7:** paso y residuo en norma euclídea.
-- **8:** error verdadero en norma infinito.
-- **9:** error verdadero en norma euclídea.
+- **1:** absoluto estimado.
+- **2:** absoluto exacto o verdadero; pide directamente la referencia.
+- **3:** relativo porcentual estimado.
+- **4:** relativo porcentual exacto o verdadero; pide directamente la referencia.
+- **5:** porcentual IUA estimado.
+- **6:** criterios avanzados; incluye las normas euclídeas, el residuo y los cortes simultáneos.
 
-Para el pedido de Gauss-Seidel de 2026, elegí 6 o 7 según la norma que adoptes, corte por tolerancia, `1e-7` para el paso y `1e-5` para el residuo. El programa exige **ambas** condiciones. Después de las tolerancias y del máximo de iteraciones aparece `Opciones adicionales`: permite reordenar filas e ingresar el vector de referencia. `gauss` calcula una referencia numérica, que se informa como sujeta al redondeo.
+Para el pedido de Gauss-Seidel de 2026, elegí **6 (avanzados)** y después **3 (estimado y residuo máximos)** o **4 (estimado y residuo euclídeos)** según la norma que adoptes. Usá corte por tolerancia, `1e-7` para el paso y `1e-5` para el residuo. El programa exige **ambas** condiciones. Después de las tolerancias y del máximo de iteraciones aparece `Opciones adicionales`: permite reordenar filas e ingresar una referencia opcional si aún no la diste. `gauss` calcula una referencia numérica, que se informa como sujeta al redondeo.
 
 En **regresión**, después del ajuste, el menú permite predecir, buscar una raíz, graficar o resolver el sistema normal redondeado. Para `a+b*v+c/v`, elegí tres bases: `1`, `x`, `1/x`. Para `a*sin(x)+b*cos(x)`, ingresá únicamente las dos bases `sin(x)` y `cos(x)`.
 

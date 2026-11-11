@@ -31,6 +31,7 @@ PROGRAMAS = {
     'spline': 'Interpolacion/Spline',
     'recta': 'Regresión/regresionLineal',
     'reg': 'Regresión/polynomialRegression',
+    'menu': 'menu',
 }
 NUM = r'([-+]?\d+(?:\.\d*)?(?:[eE][-+]?\d+)?)'
 
@@ -76,11 +77,11 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         # Las entradas historicas no incluian el nuevo menu opcional al final.
         if data and not avanzado and key in ('bis','rf','nr','sec','pf','iter'):
             data += '0\n'
-        p = subprocess.run([str(self.bin[key])], input=data, text=True,
+        p = subprocess.run([str(self.bin[key])], input=data, text=True, encoding='utf-8',
                            cwd=self.base, capture_output=True, timeout=10,
                            env=dict(os.environ, RECUP_ANCHO=str(ancho)))
         self.assertEqual(p.returncode, 0 if ok else 1, p.stdout + p.stderr)
-        self.assertNotIn('No se pudo abrir', p.stdout if ok else '')
+        self.assertNotIn('No se pudo abrir', p.stdout if ok and key != 'menu' else '')
         return p.stdout
 
     def tabla(self, text, indice):
@@ -113,7 +114,8 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         originales = {p.relative_to(fuente) for p in fuente.rglob('*.cpp')}
         self.assertEqual(len(originales), 11)
         for branch in ('PARAEDITAR', 'CODIGO'):
-            copia = {p.relative_to(ROOT / branch) for p in (ROOT / branch).rglob('*.cpp')}
+            copia = {p.relative_to(ROOT / branch) for p in (ROOT / branch).rglob('*.cpp')
+                     if p.relative_to(ROOT / branch) != Path('menu.cpp')}
             self.assertEqual(originales, copia)
         for p in SRC.rglob('*'):
             if p.is_file() and p.suffix in ('.cpp', '.md', '.txt') and 'GeoGebra' not in str(p):
@@ -197,9 +199,20 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         self.cerca(out, r'producto U_ii = ', -2)
         self.cerca(out, r'\|\|A\*x-b\|\|inf = ', 0)
         self.assertIn('<->', out)
+        self.assertIn('PIVOTEO PARCIAL ESCALADO: intercambio F1 <-> F2.', out)
+        self.assertIn('RESUMEN DE PIVOTEO: 1 intercambio(s) de filas.', out)
+        # El escalado puede elegir una entrada menor en valor absoluto.
+        out = self.run_program('gauss', entrada(1, 2, '2 100 202', '1 1 3'))
+        self.assertIn('Fila elegida: F2; candidato = 1; escala = 1; |candidato|/escala = 1', out)
+        self.assertIn('PIVOTEO PARCIAL ESCALADO: intercambio F1 <-> F2.', out)
+        self.cerca(out, r'x1 = ', 1)
+        self.cerca(out, r'x2 = ', 2)
+        self.cerca(out, r'producto U_ii = ', -98)
         out = self.run_program('gauss', entrada(1, 2, '1e-30 0 1e-30', '0 2e-30 4e-30'))
         self.cerca(out, r'x1 = ', 1)
         self.cerca(out, r'x2 = ', 2)
+        self.assertIn('RESUMEN DE PIVOTEO: 0 intercambio(s) de filas.', out)
+        self.assertIn('No se necesitaron intercambios de filas.', out)
         out = self.run_program('gauss', entrada(1, 2, '1e-300 0 1e-300', '0 1e-300 2e-300'))
         det = re.search(r'producto U_ii = (\S+)', out).group(1)
         self.assertLess(abs(Decimal(det)/Decimal('1e-600')-1), Decimal('1e-12'))
@@ -224,12 +237,12 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
 
     def test_10_iterativos_tres_metodos_y_cinco_errores(self):
         for metodo in (1, 2, 3):
-            for criterio in (1, 2, 3, 4, 5):
+            for criterio, seleccion in [(1,[1]), (2,[6,1]), (3,[3]), (4,[5]), (5,[6,2])]:
                 with self.subTest(metodo=metodo, criterio=criterio):
                     datos = [metodo, 1, 2, '4 1 6', '1 3 7']
                     if metodo == 3:
                         datos += [1.1]
-                    out = self.run_program('iter', entrada(*datos, '', criterio, 1, '1e-8', 200))
+                    out = self.run_program('iter', entrada(*datos, '', *seleccion, 1, '1e-8', 200))
                     self.cerca(out, r'x1 = ', 1)
                     self.cerca(out, r'x2 = ', 2)
                     self.assertIn('\nRESULTADO\n', out)
@@ -250,6 +263,10 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         self.cerca(out, r'x1 = ', 1.25)
         self.cerca(out, r'x2 = ', 7/3)
         self.cerca(out, r'Iteraciones = ', 1)
+        self.assertIn('Jacobi necesita un punto de partida X^(0)', out)
+        self.assertIn('Vector de partida X^(0) = (0, 1)', out)
+        self.assertIn('Pivoteo parcial durante las iteraciones: no se aplica.', out)
+        self.assertNotIn('PIVOTEO PARCIAL ESCALADO: intercambio', out)
 
     def test_13_interpolacion_tres_metodos(self):
         for metodo in (1, 2, 3):
@@ -318,8 +335,8 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         self.cerca(out, r'c1 = ', 1)
         self.cerca(out, r'Sr = suma e_i\^2 = ', 2/3)
         self.cerca(out, r'St = suma \(y_i-media\)\^2 = ', 8/3)
-        self.cerca(out, r'ECM .* = Sr/n = ', 2/9)
-        self.cerca(out, r'RMSE .* = sqrt\(Sr/n\) = ', math.sqrt(2/9))
+        self.cerca(out, r'ECM .* = Sr/\(n\+1\) = ', 2/9)
+        self.cerca(out, r'RMSE .* = sqrt\(Sr/\(n\+1\)\) = ', math.sqrt(2/9))
         self.cerca(out, r'R\^2 = 1-Sr/St = ', .75)
         self.cerca(out, r'r de Pearson \(con signo\) = ', math.sqrt(.75))
 
@@ -367,9 +384,9 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
     def test_25_registros_y_fin_entrada(self):
         programa = self.bin['bis']
         log = programa.with_name('salida_' + programa.stem + '.txt')
-        antes = log.read_text() if log.exists() else ''
+        antes = log.read_text(encoding='utf-8') if log.exists() else ''
         out = self.run_program('bis', entrada('x-2', 1, 3, 5, 1, '1e-6', 20, ''))
-        despues = log.read_text()
+        despues = log.read_text(encoding='utf-8')
         self.assertTrue(despues.startswith(antes))
         self.assertIn('TEXTO PARA COPIAR EN LA HOJA', despues[len(antes):])
         self.assertIn('f(x), ecuacion f(x)=0: x-2', despues[len(antes):])
@@ -439,13 +456,13 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
 
     def test_32_corte_doble_no_atajo_por_residuo_cero(self):
         # En el paso 1 el residuo es cero, pero el salto es 1 > 0.5.
-        out=self.run_program('iter',entrada(2,1,1,'1 1','0',6,1,.5,10,'1e-5'))
+        out=self.run_program('iter',entrada(2,1,1,'1 1','0',6,3,1,.5,10,'1e-5'))
         self.cerca(out,r'Iteraciones = ',2)
         self.assertIn('Y residuo <',out)
 
     def test_33_corte_doble_norma_euclidea(self):
         for criterio,iteraciones in [(6,1),(7,2)]:
-            out=self.run_program('iter',entrada(2,1,2,'1 0 1','0 1 1','0 0',criterio,1,1.2,10,'1e-5'))
+            out=self.run_program('iter',entrada(2,1,2,'1 0 1','0 1 1','0 0',6,3 if criterio==6 else 4,1,1.2,10,'1e-5'))
             self.cerca(out,r'Iteraciones = ',iteraciones)
         self.assertIn('Residuo euclideo iteracion',out)
 
@@ -455,7 +472,7 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
             self.cerca(out,r'Iteraciones realizadas = ',pasos)
 
     def test_35_reorden_2024_y_referencia_exacta(self):
-        out=self.run_program('iter',entrada(2,1,3,'0 2 5 -14','1 -4 2 -19','5 1 -2 16','0 0 0',8,1,'1e-4',100,1,2,'1 3 -4',1),avanzado=True)
+        out=self.run_program('iter',entrada(2,1,3,'0 2 5 -14','1 -4 2 -19','5 1 -2 16','0 0 0',2,'1 3 -4',1,'1e-4',100,1,2,1),avanzado=True)
         self.assertIn('Permutacion de ecuaciones: 3 2 1',out)
         self.cerca(out,r'Error verdadero iteracion 1: inf=',2.55)
         self.assertLess(self.valor(out,r'Error verdadero infinito = '),1e-4)
@@ -522,8 +539,10 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         self.cerca(out,r'RESULTADO: y\(1.5\) = ',1.5)
 
     def test_44_referencia_numerica_gauss_y_error_verdadero(self):
-        out=self.run_program('iter',entrada(2,1,2,'4 1 6','1 3 7','0 0',9,1,'1e-7',100,1,0,'gauss',1),avanzado=True)
+        out=self.run_program('iter',entrada(2,1,2,'4 1 6','1 3 7','0 0',6,5,'gauss',1,'1e-7',100,1,0,1),avanzado=True)
         self.assertIn('sujeta al redondeo',out)
+        self.assertIn('CALCULO DE REFERENCIA POR GAUSS: se detalla su pivoteo parcial escalado.',out)
+        self.assertIn('RESUMEN DE PIVOTEO:',out)
         self.assertLess(self.valor(out,r'Error verdadero euclideo = '),1e-7)
 
     def test_45_corte_doble_raices_y_residuo_original_relajado(self):
@@ -568,7 +587,7 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         self.assertIn('DATOS DE ENTRADA', out)
         informe = out[out.index('\nTEXTO PARA COPIAR EN LA HOJA\n'):]
         informe = informe[:informe.index('\nGuardado en:')]
-        log = self.bin['recta'].with_name('salida_regresionLineal.txt').read_text()
+        log = self.bin['recta'].with_name('salida_regresionLineal.txt').read_text(encoding='utf-8')
         self.assertIn(informe, log)
         self.assertNotIn('\x1b', out)
 
@@ -578,6 +597,153 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         self.assertTrue(filas)
         self.assertIn('CALCULO INTERRUMPIDO', out)
         self.assertNotIn('RESULTADO: x = ', out)
+
+    def test_50_recta_ejemplo_original_derivadas_matriz_y_funcion(self):
+        datos = (ROOT / 'ejemplos/regresion_lineal_cursada.txt').read_text()
+        out = self.run_program('recta', datos)
+        for nombre, esperado in [('x', 20), ('y', 37), ('x^2', 92), ('x*y', 25)]:
+            self.cerca(out, r'suma ' + re.escape(nombre) + ' = ', esperado)
+        self.assertIn('dS/da = -2*suma_i x_i*[y_i - (a*x_i+b)] = 0', out)
+        self.assertIn('dS/db = -2*suma_i [y_i - (a*x_i+b)] = 0', out)
+        self.assertIn('a*suma(x_i^2) + b*suma(x_i) = suma(x_i*y_i)', out)
+        self.assertIn('(92)*a + (20)*b = 25', out)
+        self.assertIn('(20)*a + (8)*b = 37', out)
+        self.assertIn('n=7; cantidad de datos n+1=8', out)
+        self.assertIn('[ Σ(x_i^2)  Σ(x_i) | Σ(x_i*y_i) ]', out)
+        self.assertIn('[ Σ(x_i)    n+1    | Σ(y_i)     ]', out)
+        self.assertIn('n+1 equivale a Σ(1)', out)
+        normal = out.split('MATRIZ AUMENTADA: incognitas en orden [a, b]')[1]
+        normal = normal.split('Desarrollo por Gauss')[0]
+        filas = self.tabla(normal, 'Fila')
+        self.assertEqual([filas['1'][c] for c in ('coef. de a', 'coef. de b', 'termino indep.')], ['92', '20', '25'])
+        self.assertEqual([filas['2'][c] for c in ('coef. de a', 'coef. de b', 'termino indep.')], ['20', '8', '37'])
+        self.cerca(out, r'Solucion por Gauss: a = ', -45/28)
+        self.cerca(out, r'a \(pendiente\) = ', -45/28)
+        self.cerca(out, r'b \(ordenada al origen\) = ', 121/14)
+        funcion = re.search(r'f\(x\) = ' + NUM + r'\*x \+ ' + NUM, out)
+        self.assertIsNotNone(funcion, out)
+        self.assertAlmostEqual(float(funcion[1]), -45/28)
+        self.assertAlmostEqual(float(funcion[2]), 121/14)
+        # La formula final reproduce las mismas predicciones que los coeficientes.
+        self.assertAlmostEqual(float(funcion[1])*2 + float(funcion[2]), 38/7)
+        self.assertIn('Retrosustitucion:', out)
+
+    def test_51_recta_ordenada_negativa_y_opcion_polinomica(self):
+        for key, opciones in [('recta', []), ('reg', [1, 1])]:
+            with self.subTest(programa=key):
+                out = self.run_program(key, entrada(1, '0 1 2', '-3 -1 1', *opciones, 0))
+                self.assertIn('f(x) = 2*x - 3', out)
+                self.cerca(out, r'a \(pendiente\) = ', 2)
+                self.cerca(out, r'b \(ordenada al origen\) = ', -3)
+                self.assertNotIn('MODELO ORIGINAL:', out)
+
+    def test_52_regresion_cuadratica_derivadas_por_coeficiente(self):
+        out = self.run_program('reg', entrada(1, '0 1 2', '1 6 17', 1, 2, 0))
+        for j in range(3):
+            self.assertIn(f'dS/dc{j} = -2*suma_i phi{j}(x_i)*[y_i - modelo_i] = 0', out)
+        self.assertIn('(3)*c0 + (3)*c1 + (5)*c2 = 24', out)
+        self.assertIn('(3)*c0 + (5)*c1 + (9)*c2 = 40', out)
+        self.assertIn('(5)*c0 + (9)*c1 + (17)*c2 = 74', out)
+        self.assertIn('f(x) = ', out)
+        for j, valor in enumerate([1, 2, 3]):
+            self.cerca(out, rf'c{j} = ', valor)
+
+    def test_53_menu_cuatro_metodos_una_matriz(self):
+        config = ['', 1, 1, '1e-8', 200, 0]
+        out = self.run_program('menu', entrada(
+            6, 1, 2, '4 1 6', '1 3 7',
+            1, 2, *config, 3, *config, 4, 1.1, *config, 0, 0))
+        self.assertEqual(out.count('Cantidad de incognitas'), 1)
+        self.assertEqual(out.count('Fila 1 (coeficientes y termino independiente)'), 1)
+        for nombre in ['ELIMINACION GAUSSIANA', 'JACOBI', 'GAUSS-SEIDEL', 'SOR']:
+            self.assertIn(nombre, out)
+        self.assertEqual(out.count('\nRESULTADO\n'), 4)
+        self.cerca(out, r'x1 = ', 1)
+        self.cerca(out, r'x2 = ', 2)
+
+    def test_54_menu_interpolacion_splines_regresion_una_tabla(self):
+        out = self.run_program('menu', entrada(
+            8, 1, '2 0 1', '9 1 4',
+            1, '', '', 1, .5, 0,           # Lagrange: P(0.5)=2.25
+            3, '', '', 1, .5, 0,           # Newton, sin volver a pegar x e y
+            6, '', 1, .5, 0,               # Spline natural: S(0.5)=2.3125
+            8, 0,                          # Recta
+            9, 2, 0,                       # Polinomio de grado 2
+            0, 0))
+        self.assertEqual(out.count('Valores de x separados por espacios'), 1)
+        self.assertEqual(out.count('Valores de y en el mismo orden'), 1)
+        self.assertEqual(out.count('RESULTADO: P(0.5) = 2.25'), 2)
+        self.cerca(out, r'RESULTADO: S\(0.5\) = ', 2.3125)
+        self.cerca(out, r'c0 = ', 1)
+        self.cerca(out, r'c1 = ', 2)
+        self.cerca(out, r'c2 = ', 1)
+        # Ordenar para interpolar no cambia el orden original usado por regresion.
+        recta = out.split('REGRESION POR MINIMOS CUADRADOS')[0]
+        self.assertEqual(self.tabla(recta, 'i')['0']['x_i'], '2')
+
+    def test_55_menu_error_de_interpolacion_conserva_tabla_para_regresion(self):
+        out = self.run_program('menu', entrada(
+            10, 1, '0 0 1', '0 2 4', 1, 8, 0, 0, 0))
+        self.assertIn('Hay abscisas repetidas', out)
+        self.assertEqual(out.count('Valores de x separados por espacios'), 1)
+        self.cerca(out, r'a \(pendiente\) = ', 3)
+        self.cerca(out, r'b \(ordenada al origen\) = ', 1)
+
+    def test_56_menu_reemplazo_atomico_y_datos_entre_familias(self):
+        out = self.run_program('menu', entrada(
+            6, 1, 1, '1 2', 1,          # Primera matriz: x1=2
+            5, 2, self.base/'ausente.txt', 1,  # Falla la recarga; sigue x1=2
+            5, 1, 1, '2 10', 1, 0,     # Nueva matriz: x1=5; volver al principal
+            8, 1, '0 1 2', '1 3 5', 8, 0, 0,
+            6, 1, 0,                    # Volver a sistemas sin cargar; x1=5
+            10, 8, 0, 0, 0))           # Volver a la tabla sin cargar
+        self.assertIn('No se pudo abrir', out)
+        self.assertEqual(out.count('Cantidad de incognitas'), 2)
+        self.assertEqual(out.count('Valores de x separados por espacios'), 1)
+        self.assertEqual(out.count('\nx1 = 2\n'), 2)
+        self.assertEqual(out.count('\nx1 = 5\n'), 2)
+        self.cerca(out, r'a \(pendiente\) = ', 2)
+        self.cerca(out, r'b \(ordenada al origen\) = ', 1)
+
+    def test_57_menu_reordenar_no_modifica_matriz_original_y_archivos(self):
+        out = self.run_program('menu', entrada(
+            7, 1, 2, '0 2 4', '1 3 7',
+            3, '', 1, 1, '1e-8', 100, 1, 1, '2 1', '', 1,
+            1, 0, 0))
+        self.assertIn('Permutacion de ecuaciones: 2 1', out)
+        self.assertIn('F1 <-> F2', out)  # Gauss recibe de nuevo la fila original de diagonal nula.
+        self.assertEqual(out.count('Cantidad de incognitas'), 1)
+        self.cerca(out, r'x1 = ', 1)
+        self.cerca(out, r'x2 = ', 2)
+        # ENTER sigue encontrando los data.txt de cada familia desde el menu comun.
+        out = self.run_program('menu', entrada(6, 2, '', 1, 0, 8, 2, '', 16, 0, 0))
+        self.assertIn('Matriz cargada.', out)
+        self.assertIn('Tabla cargada.', out)
+        self.assertIn('SistEcuacionesLineales/data.txt', out)
+        self.assertIn('Interpolacion/data.txt', out)
+
+    def test_58_errores_verdaderos_sin_opciones_adicionales(self):
+        for opcion, tolerancia, esperado in [(2,.05,1/24), (4,3,100/48)]:
+            for key in ('iter', 'menu'):
+                with self.subTest(error=opcion, programa=key):
+                    if key == 'iter':
+                        datos = entrada(2,1,2,'4 1 6','1 3 7','0 0',opcion,'1 2',1,tolerancia,100,0)
+                    else:
+                        datos = entrada(6,1,2,'4 1 6','1 3 7',3,'0 0',opcion,'1 2',1,tolerancia,100,0,0,0)
+                    out = self.run_program(key,datos,avanzado=True)
+                    self.cerca(out,r'Iteraciones = ',2)
+                    self.cerca(out,r'ultimo E = ',esperado,1e-12)
+                    self.assertEqual(out.count('Solucion exacta de referencia, separada por espacios'),1)
+                    self.assertNotIn('Criterio avanzado:',out)
+                    if opcion==4:
+                        self.assertIn('Tolerancia porcentual (0.1 significa 0.1%)',out)
+                        self.assertIn('Relativo porcentual exacto o verdadero',out)
+
+    def test_59_error_porcentual_verdadero_referencia_nula(self):
+        out = self.run_program('iter',entrada(2,1,1,'1 0','0',4,'0'),ok=False,avanzado=True)
+        self.assertIn('no esta definido para una referencia nula',out)
+        self.assertIn('Usa el error absoluto verdadero',out)
+        self.assertNotIn('\nRESULTADO\n',out)
 
 
 if __name__ == '__main__':

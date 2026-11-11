@@ -25,6 +25,6 @@ for /r %%F in (*.cpp) do (
         exit /b 1
     )
 )
-echo Los 11 programas estan listos.
+echo Los 11 metodos y el menu con datos compartidos estan listos.
 popd
 exit /b 0

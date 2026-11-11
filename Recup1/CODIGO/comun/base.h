@@ -122,6 +122,7 @@ public:
         else archivo<<"\n================ NUEVO EJERCICIO ================\n";
         hoja<<std::setprecision(15);
         const std::string nombres[][2]={
+            {"menu","MENU DE METODOS NUMERICOS"},
             {"Biseccion","BISECCION"},{"RegulaFalsi","REGULA FALSI"},
             {"Newton-Raphson","NEWTON-RAPHSON"},{"Secante","SECANTE"},{"Punto-Fijo","PUNTO FIJO"},
             {"Eliminacion-Gaussiana","ELIMINACION GAUSSIANA"},
@@ -178,13 +179,19 @@ public:
     }
     void error(const std::string &m){std::cout<<"\nERROR: "<<m<<'\n'; if(archivo){archivo<<"ERROR: "<<m<<'\n'; archivo.flush();}}
 };
+inline void informarFallo(Sesion &s,const std::exception &e){
+    if(!s.hoja.str().empty()) {
+        s.hoja<<"\nCALCULO INTERRUMPIDO: "<<e.what()<<"\nNo hay un resultado final validado.\n";
+        s.mostrar();
+    }
+    s.error(e.what());
+}
 inline int ejecutar(const char *argv0, const std::function<void(Sesion&)> &tarea){
     Sesion s(argv0);
     try {tarea(s); return 0;}
     catch(const FinEntrada&){std::cout<<"\nEntrada finalizada.\n"; return 0;}
     catch(const std::exception &e){
-        if(!s.hoja.str().empty()) {s.hoja<<"\nCALCULO INTERRUMPIDO: "<<e.what()<<"\nNo hay un resultado final validado.\n";s.mostrar();}
-        s.error(e.what()); return 1;
+        informarFallo(s,e); return 1;
     }
 }
 inline Vec lista(const std::string &linea){
@@ -210,22 +217,26 @@ inline Mat archivoFilas(const std::string &ruta){
     if(filas.empty()) throw std::runtime_error("Archivo sin datos: "+ruta);
     return filas;
 }
-inline std::string rutaDatos(Sesion &s){
-    std::string r=s.leer("Ruta del archivo [ENTER=data.txt junto al ejecutable]: ");
-    return r.empty()?s.carpeta+"/data.txt":r;
+inline std::string rutaDatos(Sesion &s,const std::string &predeterminado="data.txt"){
+    std::string r=s.leer("Ruta del archivo [ENTER="+predeterminado+" junto al ejecutable]: ");
+    return r.empty()?s.carpeta+"/"+predeterminado:r;
 }
 struct Puntos {Vec x,y;};
-inline Puntos puntos(Sesion &s,bool distintos){
+inline Puntos puntos(Sesion &s,bool distintos,const Puntos *original=nullptr,
+                     const std::string &predeterminado="data.txt"){
     Puntos p;
+    if(original)p=*original;
+    else {
     int modo=s.entero("Datos: 1=pegar listas x e y, 2=archivo de filas x y",1,2,"1");
     if(modo==1){
         p.x=leerLista(s,"Valores de x separados por espacios (ej.: 0 1 2)");
         if(p.x.size()<2 || p.x.size()>100) throw std::runtime_error("Se necesitan de 2 a 100 puntos.");
         p.y=leerLista(s,"Valores de y en el mismo orden",static_cast<int>(p.x.size()));
     }else{
-        Mat m=archivoFilas(rutaDatos(s));
+        Mat m=archivoFilas(rutaDatos(s,predeterminado));
         if(m.size()<2) throw std::runtime_error("Se necesitan al menos 2 puntos.");
         for(const Vec &f:m){if(f.size()!=2) throw std::runtime_error("Cada fila debe tener exactamente x y.");p.x.push_back(f[0]);p.y.push_back(f[1]);}
+    }
     }
     if(distintos){
         std::vector<size_t> orden(p.x.size()); for(size_t i=0;i<orden.size();++i) orden[i]=i;
@@ -253,15 +264,33 @@ struct Solucion {Vec x; long double det;};
 // Se conservan A y b originales para verificar el residuo despues.
 inline Solucion gauss(Mat a,Vec b,std::ostream *out=nullptr){
     const int n=static_cast<int>(a.size()); Vec escala(n),x(n); long double det=1;
+    int intercambios=0;
+    if(out){
+        *out<<"\nEstrategia: PIVOTEO PARCIAL ESCALADO.\n"
+            <<"En cada columna se busca, entre la fila actual y las inferiores,\n"
+            <<"el mayor cociente |candidato|/escala; escala = maximo |a_ij| de la fila original.\n"
+            <<"Se intercambian filas completas junto con sus terminos independientes.\n"
+            <<"Matriz aumentada inicial:\n";
+        matriz(*out,a,b);
+    }
     for(int i=0;i<n;++i){for(double v:a[i]) escala[i]=std::max(escala[i],std::fabs(v));
         if(escala[i]==0) throw std::runtime_error("Sistema singular: una fila de A es nula.");}
-    if(out) {*out<<"Matriz aumentada inicial:\n";matriz(*out,a,b);}
     for(int k=0;k<n;++k){
         int p=k; for(int i=k+1;i<n;++i) if(std::fabs(a[i][k])/escala[i]>std::fabs(a[p][k])/escala[p]) p=i;
+        if(out)*out<<"\nPaso "<<k+1<<" | seleccion del pivote en columna "<<k+1<<'\n'
+                   <<"Fila elegida: F"<<p+1<<"; candidato = "<<a[p][k]<<"; escala = "<<escala[p]
+                   <<"; |candidato|/escala = "<<std::fabs(a[p][k])/escala[p]<<'\n';
         if(std::fabs(a[p][k])/escala[p] <= 64*std::numeric_limits<double>::epsilon())
             throw std::runtime_error("Sistema singular o numericamente mal condicionado: sin solucion unica confiable.");
         if(p!=k){std::swap(a[p],a[k]);std::swap(b[p],b[k]);std::swap(escala[p],escala[k]);det=-det;
-            if(out) *out<<"F"<<k+1<<" <-> F"<<p+1<<" (cambia el signo del determinante).\n";}
+            ++intercambios;
+            if(out){
+                *out<<"PIVOTEO PARCIAL ESCALADO: intercambio F"<<k+1<<" <-> F"<<p+1<<".\n"
+                    <<"Cambia el signo del determinante; se conserva el orden de las variables.\n"
+                    <<"Matriz despues del intercambio, antes de eliminar:\n";
+                matriz(*out,a,b);
+            }
+        }else if(out)*out<<"Sin intercambio: F"<<k+1<<" ya contiene el pivote elegido.\n";
         det*=a[k][k];
         for(int i=k+1;i<n;++i){
             double m=a[i][k]/a[k][k];
@@ -271,7 +300,11 @@ inline Solucion gauss(Mat a,Vec b,std::ostream *out=nullptr){
         }
         if(out){*out<<"Luego del paso "<<k+1<<":\n";matriz(*out,a,b);}
     }
-    if(out) *out<<"Retrosustitucion: x_i = (b_i - suma_(j>i) U_ij*x_j)/U_ii\n";
+    if(out){
+        *out<<"\nRESUMEN DE PIVOTEO: "<<intercambios<<" intercambio(s) de filas.\n";
+        if(intercambios==0)*out<<"No se necesitaron intercambios de filas.\n";
+        *out<<"Retrosustitucion: x_i = (b_i - suma_(j>i) U_ij*x_j)/U_ii\n";
+    }
     for(int i=n-1;i>=0;--i){
         double suma=0; for(int j=i+1;j<n;++j) suma+=a[i][j]*x[j];
         x[i]=finito((b[i]-suma)/a[i][i]);

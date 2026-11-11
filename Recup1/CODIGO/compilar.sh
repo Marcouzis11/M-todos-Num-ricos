@@ -16,6 +16,7 @@ programas=(
  'Interpolacion/Spline'
  'Regresión/regresionLineal'
  'Regresión/polynomialRegression'
+ 'menu'
 )
 for p in "${programas[@]}"; do
     recompilar=0
@@ -28,4 +29,4 @@ for p in "${programas[@]}"; do
         "$compilador" -std=c++11 -O2 -Wall -Wextra -Wpedantic "$base/$p.cpp" -o "$base/$p"
     fi
 done
-echo "Los 11 programas estan listos."
+echo "Los 11 metodos y el menu con datos compartidos estan listos."
