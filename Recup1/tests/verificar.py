@@ -72,15 +72,31 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
     def tearDownClass(cls):
         cls.tmp.cleanup()
 
-    def run_program(self, key, data, ok=True, avanzado=False):
+    def run_program(self, key, data, ok=True, avanzado=False, ancho=100):
         # Las entradas historicas no incluian el nuevo menu opcional al final.
         if data and not avanzado and key in ('bis','rf','nr','sec','pf','iter'):
             data += '0\n'
         p = subprocess.run([str(self.bin[key])], input=data, text=True,
-                           cwd=self.base, capture_output=True, timeout=10)
+                           cwd=self.base, capture_output=True, timeout=10,
+                           env=dict(os.environ, RECUP_ANCHO=str(ancho)))
         self.assertEqual(p.returncode, 0 if ok else 1, p.stdout + p.stderr)
         self.assertNotIn('No se pudo abrir', p.stdout if ok else '')
         return p.stdout
+
+    def tabla(self, text, indice):
+        """Reconstruye filas a partir de los paneles que repiten la columna indice."""
+        filas, columnas = {}, None
+        for linea in text.splitlines():
+            if not (linea.startswith('|') and linea.endswith('|')):
+                continue
+            celdas = [c.strip() for c in linea[1:-1].split(' | ')]
+            if celdas[0] == indice:
+                columnas = celdas
+            elif columnas and celdas[0].isdigit() and len(celdas) == len(columnas):
+                filas.setdefault(celdas[0], {}).update(zip(columnas, celdas))
+            else:
+                columnas = None
+        return filas
 
     def valor(self, text, patron):
         match = re.findall(patron + NUM, text)
@@ -123,7 +139,9 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         out = self.run_program('bis', entrada('x^2-2', 0, 2, 5, 1, '1e-9', 100, 'sqrt(2)'))
         self.cerca(out, r'RESULTADO: x = ', math.sqrt(2), 1e-9)
         self.assertIn('Primer reemplazo:', out)
-        self.assertIn('-- | -- | --', out)
+        primera = self.tabla(out, 'n')['1']
+        for columna in ('E_abs', 'E_rel%', 'E_IUA%'):
+            self.assertEqual(primera[columna], '--')
         self.assertIn('Error absoluto verdadero', out)
 
     def test_04_biseccion_extremos_y_intervalo_invertido(self):
@@ -414,9 +432,8 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
 
     def test_31_biseccion_2025_primera_comparacion_iua(self):
         out=self.run_program('bis',entrada('(x+1)/(x+4)-.25*x',1.75,3.2,3,1,.01,100,2,1,3.2,1,'',0),avanzado=True)
-        fila=next(l for l in out.splitlines() if l.startswith('1 | '))
-        valores=[float(v.strip()) for v in fila.split('|')]
-        self.assertAlmostEqual(valores[9],25.55066079295154,delta=1e-10)
+        primera=self.tabla(out,'n')['1']
+        self.assertAlmostEqual(float(primera['E_IUA%']),25.55066079295154,delta=1e-10)
         self.cerca(out,r'RESULTADO: x = ',2.000103759765625,1e-14)
         self.cerca(out,r'Iteraciones realizadas = ',13)
 
@@ -517,6 +534,50 @@ catch(const std::exception&) { std::cout << "ERROR\\n"; }
         out=self.run_program('pf',entrada('1','0',0,1,1,'1e-6',3,'',1,'1e-10',1,'1e-5',0),avanzado=True)
         self.assertNotIn('RESULTADO: x = ',out)
         self.assertGreater(self.valor(out,r'Residuo absoluto = '),.99)
+
+    def test_46_tablas_angostas_conservan_todas_las_columnas_y_precision(self):
+        datos = entrada('x^2-2', 0, 2, 5, 2, 4, '')
+        angosta = self.run_program('bis', datos, ancho=40)
+        ancha = self.run_program('bis', datos, ancho=240)
+        self.assertEqual(self.tabla(angosta, 'n'), self.tabla(ancha, 'n'))
+        self.assertEqual(len(self.tabla(angosta, 'n')), 4)
+        self.assertIn('Columnas - bloque', angosta)
+        for linea in angosta.splitlines():
+            if linea.startswith(('|', '+')):
+                self.assertLessEqual(len(linea), 40, linea)
+        # Todos los bordes verticales coinciden dentro de cada panel.
+        posiciones = None
+        for linea in angosta.splitlines():
+            if linea.startswith('+'):
+                posiciones = [i for i, c in enumerate(linea) if c == '+']
+            elif linea.startswith('|'):
+                self.assertEqual([i for i, c in enumerate(linea) if c == '|'], posiciones)
+
+    def test_47_diferencias_divididas_encabezados_completos(self):
+        out = self.run_program('interp', entrada(1, '0 1 2 3', '0 1 4 9', 3, '', '', 0))
+        filas = self.tabla(out, 'i')
+        self.assertEqual(filas['0']['D[i,3]'], '0')
+        self.assertEqual(filas['3']['D[i,1]'], '--')
+        self.assertNotIn('| ...', out)
+
+    def test_48_menu_vertical_y_registro_con_tablas(self):
+        datos = entrada(1, '0 1 2', '1 3 5', 0)
+        out = self.run_program('recta', datos)
+        self.assertIn('RECUPERATORIO 1 | REGRESION LINEAL', out)
+        self.assertIn('\n  2=archivo de filas x y', out)
+        self.assertIn('DATOS DE ENTRADA', out)
+        informe = out[out.index('\nTEXTO PARA COPIAR EN LA HOJA\n'):]
+        informe = informe[:informe.index('\nGuardado en:')]
+        log = self.bin['recta'].with_name('salida_regresionLineal.txt').read_text()
+        self.assertIn(informe, log)
+        self.assertNotIn('\x1b', out)
+
+    def test_49_interrupcion_conserva_tabla_parcial(self):
+        out = self.run_program('pf', entrada('exp(x)', '', 2, 1, 2, 10, ''), ok=False)
+        filas = self.tabla(out, 'n')
+        self.assertTrue(filas)
+        self.assertIn('CALCULO INTERRUMPIDO', out)
+        self.assertNotIn('RESULTADO: x = ', out)
 
 
 if __name__ == '__main__':

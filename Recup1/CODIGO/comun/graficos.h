@@ -93,13 +93,15 @@ inline void raizModelo(Sesion &s,const std::function<double(double)> &modelo){
     double fa=finito(modelo(a)),fb=finito(modelo(b)),x=a,fx=fa;int k=0;
     bool ok=fa==0 || fb==0;if(fb==0){x=b;fx=fb;}
     if(!ok && std::signbit(fa)==std::signbit(fb))throw std::runtime_error("El modelo no cambia de signo en los extremos elegidos.");
-    s.hoja<<"RAIZ DEL MODELO POR BISECCION\nRequiere continuidad en el intervalo elegido.\nk | x | cota | residuo\n";
+    s.hoja<<"RAIZ DEL MODELO POR BISECCION\nRequiere continuidad en el intervalo elegido.\n";
+    Tabla tabla({"k","x","cota","residuo"});
     for(int i=1;i<=maxit && !ok;++i){x=a/2+b/2;fx=finito(modelo(x));double cota=b/2-a/2;k=i;
-        s.hoja<<i<<" | "<<x<<" | "<<cota<<" | "<<std::fabs(fx)<<'\n';
+        tabla.fila({i,x,cota,std::fabs(fx)});
         ok=fx==0 || (cota<tol && std::fabs(fx)<tr);
         if(ok || x==a || x==b)break;
         if(std::signbit(fx)==std::signbit(fa)){a=x;fa=fx;}else{b=x;fb=fx;}
     }
+    tabla.mostrar(s.hoja);
     s.hoja<<(ok?"RESULTADO: raiz del modelo = ":"ULTIMA APROXIMACION sin tolerancia confirmada = ")<<x
           <<"\nA diez decimales: "<<fijo10(x)<<"\nIteraciones = "<<k<<"\nResiduo del modelo = "<<std::fabs(fx)<<'\n';
     std::string referencia=s.leer("Raiz real de referencia para error [ENTER=sin referencia]: ");

@@ -18,16 +18,31 @@ programas=(
 while true; do
     cat <<'MENU'
 
-================ RECUPERATORIO 1 ================
- 1) Biseccion                  2) Regula Falsi
- 3) Newton-Raphson             4) Secante
- 5) Punto fijo
- 6) Eliminacion Gaussiana      7) Jacobi / Gauss-Seidel / SOR
- 8) Interpolacion              9) Splines
-10) Regresion lineal          11) Regresion polinomica y otros ajustes
- 0) Salir
+================================================================
+ RECUPERATORIO 1 | METODOS NUMERICOS
+================================================================
+ LOCALIZACION DE RAICES
+   1) Biseccion
+   2) Regula Falsi
+   3) Newton-Raphson
+   4) Secante
+   5) Punto fijo
+
+ SISTEMAS DE ECUACIONES LINEALES
+   6) Eliminacion Gaussiana
+   7) Jacobi / Gauss-Seidel / SOR
+
+ INTERPOLACION Y AJUSTE DE CURVAS
+   8) Interpolacion
+   9) Splines
+  10) Regresion lineal
+  11) Regresion polinomica y otros ajustes
+----------------------------------------------------------------
+   0) Salir
+ Los informes se guardan junto al ejecutable de cada metodo.
+----------------------------------------------------------------
 MENU
-    read -r -p 'Tema: ' opcion || exit 0
+    read -r -p 'Elegi una opcion [0-11]: ' opcion || exit 0
     [[ "$opcion" == 0 ]] && exit 0
     if [[ "$opcion" =~ ^([1-9]|10|11)$ ]]; then
         programa="${programas[opcion-1]}"

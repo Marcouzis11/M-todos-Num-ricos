@@ -28,8 +28,10 @@ inline void splines(Sesion &s){
           <<"Condiciones: S_i(x_i)=y_i, S_i(x_(i+1))=y_(i+1).\n";
     if(tipo>=2)s.hoja<<"Se exige continuidad de S' en los nodos interiores.\n";
     if(tipo>=3)s.hoja<<"Se exige continuidad de S'' en los nodos interiores.\n";
-    s.hoja<<" i | h_i | delta_i=(y_(i+1)-y_i)/h_i\n";
-    for(int i=0;i<n;++i)s.hoja<<i<<" | "<<h[i]<<" | "<<delta[i]<<'\n';
+    s.hoja<<"Anchos y pendientes: h_i=x_(i+1)-x_i; delta_i=(y_(i+1)-y_i)/h_i.\n";
+    Tabla pendientes({"i","h_i","delta_i"});
+    for(int i=0;i<n;++i)pendientes.fila({i,h[i],delta[i]});
+    pendientes.mostrar(s.hoja);
     if(tipo==1){
         sp.b=delta;s.hoja<<"a_i=y_i; b_i=delta_i; c_i=d_i=0.\nSolo se garantiza continuidad de S.\n";
     }else if(tipo==2){
@@ -52,8 +54,10 @@ inline void splines(Sesion &s){
                   <<"2*h0*M0+h0*M1=6*(delta0-S'(x0)); h_(n-1)*M_(n-1)+2*h_(n-1)*Mn=6*(S'(xn)-delta_(n-1)).\n";
         }
         for(int i=1;i<n;++i){sub[i]=h[i-1];diag[i]=2*(h[i-1]+h[i]);sup[i]=h[i];rhs[i]=6*(delta[i]-delta[i-1]);}
-        s.hoja<<"\nSISTEMA TRIDIAGONAL (columnas: subdiagonal, diagonal, superdiagonal | termino independiente)\n";
-        for(int i=0;i<=n;++i)s.hoja<<"Fila "<<i<<": "<<sub[i]<<" | "<<diag[i]<<" | "<<sup[i]<<" || "<<rhs[i]<<'\n';
+        s.hoja<<"\nSISTEMA TRIDIAGONAL\n";
+        Tabla sistema({"Fila","subdiagonal","diagonal","superdiagonal","b"});
+        for(int i=0;i<=n;++i)sistema.fila({i,sub[i],diag[i],sup[i],rhs[i]});
+        sistema.mostrar(s.hoja);
         s.hoja<<"\nEliminacion de Thomas:\n";
         for(int i=1;i<=n;++i){if(diag[i-1]==0)throw std::runtime_error("Pivote nulo en Thomas.");
             double mult=sub[i]/diag[i-1];diag[i]=finito(diag[i]-mult*sup[i-1]);rhs[i]=finito(rhs[i]-mult*rhs[i-1]);
@@ -66,8 +70,10 @@ inline void splines(Sesion &s){
         if(tipo==3)s.hoja<<"Control natural: S''(x0)="<<sp.valor(0,p.x[0],2)<<"; S''(xn)="<<sp.valor(n-1,p.x[n],2)<<'\n';
         else s.hoja<<"Control sujeto: S'(x0)="<<sp.valor(0,p.x[0],1)<<" (pedido "<<izq<<"); S'(xn)="<<sp.valor(n-1,p.x[n],1)<<" (pedido "<<der<<")\n";
     }
-    s.hoja<<"\nRESULTADO: COEFICIENTES POR TRAMO\n i | a_i | b_i | c_i | d_i\n";
-    for(int i=0;i<n;++i)s.hoja<<i<<" | "<<sp.a[i]<<" | "<<sp.b[i]<<" | "<<sp.c[i]<<" | "<<sp.d[i]<<'\n';
+    s.hoja<<"\nRESULTADO: COEFICIENTES POR TRAMO\n";
+    Tabla coeficientes({"i","a_i","b_i","c_i","d_i"});
+    for(int i=0;i<n;++i)coeficientes.fila({i,sp.a[i],sp.b[i],sp.c[i],sp.d[i]});
+    coeficientes.mostrar(s.hoja);
     s.hoja<<"\nPOLINOMIOS E INTERVALOS\n";
     for(int i=0;i<n;++i){
         s.hoja<<"Tramo "<<i<<": "<<p.x[i]<<" <= x <= "<<p.x[i+1]<<'\n';
@@ -75,10 +81,15 @@ inline void splines(Sesion &s){
         double xi=p.x[i];Vec c={finito(sp.a[i]-sp.b[i]*xi+sp.c[i]*xi*xi-sp.d[i]*xi*xi*xi),finito(sp.b[i]-2*sp.c[i]*xi+3*sp.d[i]*xi*xi),finito(sp.c[i]-3*sp.d[i]*xi),sp.d[i]};
         polinomio(s.hoja,c,"Forma expandida S"+std::to_string(i)+"(x)");
     }
-    s.hoja<<"\nCONTROL DE INTERPOLACION\n tramo | S_i(x_i)-y_i | S_i(x_(i+1))-y_(i+1)\n";
-    for(int i=0;i<n;++i)s.hoja<<i<<" | "<<sp.valor(i,p.x[i])-p.y[i]<<" | "<<sp.valor(i,p.x[i+1])-p.y[i+1]<<'\n';
-    s.hoja<<"Control de continuidad (izquierda - derecha) en nodos interiores:\n i | salto S | salto S' | salto S''\n";
-    for(int i=1;i<n;++i)s.hoja<<i<<" | "<<sp.valor(i-1,p.x[i])-sp.valor(i,p.x[i])<<" | "<<sp.valor(i-1,p.x[i],1)-sp.valor(i,p.x[i],1)<<" | "<<sp.valor(i-1,p.x[i],2)-sp.valor(i,p.x[i],2)<<'\n';
+    s.hoja<<"\nCONTROL DE INTERPOLACION\n";
+    Tabla control({"tramo","S_i(x_i)-y_i","S_i(x_(i+1))-y_(i+1)"});
+    for(int i=0;i<n;++i)control.fila({i,sp.valor(i,p.x[i])-p.y[i],sp.valor(i,p.x[i+1])-p.y[i+1]});
+    control.mostrar(s.hoja);
+    s.hoja<<"\nCONTROL DE CONTINUIDAD (izquierda - derecha) EN NODOS INTERIORES\n";
+    Tabla continuidad({"i","salto S","salto S'","salto S''"});
+    for(int i=1;i<n;++i)continuidad.fila({i,sp.valor(i-1,p.x[i])-sp.valor(i,p.x[i]),sp.valor(i-1,p.x[i],1)-sp.valor(i,p.x[i],1),sp.valor(i-1,p.x[i],2)-sp.valor(i,p.x[i],2)});
+    if(n>1)continuidad.mostrar(s.hoja);
+    else s.hoja<<"No hay nodos interiores: el spline tiene un unico tramo.\n";
     s.hoja<<"El spline lineal solo exige salto S=0; el cuadratico tambien salto S'=0; el cubico tambien salto S''=0.\n";
     s.mostrar();
     for(;;){
@@ -97,11 +108,13 @@ inline void splines(Sesion &s){
                 if(coc<1 || coc>1000 || std::fabs(coc-std::round(coc))>1e-9*std::max(1.0,std::fabs(coc)))
                     throw std::runtime_error("h debe dividir el intervalo en una cantidad entera de 1 a 1000 subintervalos. No se modifica h silenciosamente.");
                 cantidad=static_cast<int>(std::round(coc));}
-            s.hoja<<"TABLA EQUIESPACIADA DEL SPLINE\nIntervalo ["<<p.x.front()<<", "<<p.x.back()<<"]; h="<<paso<<"; subintervalos="<<cantidad<<"\n i | x_i | S(x_i) | tramo";
-            if(!f.empty())s.hoja<<" | f(x_i) | error absoluto";
-            s.hoja<<'\n';Vec xs,ys;
+            s.hoja<<"TABLA EQUIESPACIADA DEL SPLINE\nIntervalo ["<<p.x.front()<<", "<<p.x.back()<<"]; h="<<paso<<"; subintervalos="<<cantidad<<'\n';
+            std::vector<std::string> columnas={"i","x_i","S(x_i)","tramo"};
+            if(!f.empty()){columnas.push_back("f(x_i)");columnas.push_back("error absoluto");}
+            Tabla tabla(columnas);Vec xs,ys;
             for(int j=0;j<=cantidad;++j){double q=j==cantidad?p.x.back():p.x.front()+j*paso;int i=sp.tramo(q);double v=sp.valor(i,q);xs.push_back(q);ys.push_back(v);
-                s.hoja<<j<<" | "<<q<<" | "<<v<<" | "<<i;if(!f.empty()){double exacto=evaluar(f,q);s.hoja<<" | "<<exacto<<" | "<<std::fabs(v-exacto);}s.hoja<<'\n';}
+                std::vector<Celda> fila={j,q,v,i};if(!f.empty()){double exacto=evaluar(f,q);fila.push_back(exacto);fila.push_back(std::fabs(v-exacto));}tabla.fila(fila);}
+            tabla.mostrar(s.hoja);
             s.hoja<<"\nLISTAS PARA PEGAR EN OTRO PROGRAMA\nx:\n";for(double q:xs)s.hoja<<q<<' ';s.hoja<<"\ny:\n";for(double v:ys)s.hoja<<v<<' ';s.hoja<<'\n';
         }else if(op==4){
             graficoFuncion(s,[&](double q){return sp.valor(sp.tramo(q),q);},"spline","Spline",&p,f);

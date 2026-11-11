@@ -23,8 +23,11 @@ inline Vec coefNewton(const Puntos &p,std::ostream &out){
     int n=static_cast<int>(p.x.size());Mat d(n,Vec(n,0));for(int i=0;i<n;++i)d[i][0]=p.y[i];
     out<<"Diferencias divididas: D[i,j]=(D[i+1,j-1]-D[i,j-1])/(x_(i+j)-x_i).\n";
     for(int j=1;j<n;++j)for(int i=0;i<n-j;++i)d[i][j]=finito((d[i+1][j-1]-d[i][j-1])/(p.x[i+j]-p.x[i]));
-    out<<" i | x_i | D[i,0] | D[i,1] | ...\n";
-    for(int i=0;i<n;++i){out<<i<<" | "<<p.x[i];for(int j=0;j<n-i;++j)out<<" | "<<d[i][j];out<<'\n';}
+    std::vector<std::string> columnas={"i","x_i"};
+    for(int j=0;j<n;++j)columnas.push_back("D[i,"+std::to_string(j)+"]");
+    Tabla tabla(columnas);
+    for(int i=0;i<n;++i){std::vector<Celda> fila={i,p.x[i]};for(int j=0;j<n-i;++j)fila.push_back(d[i][j]);tabla.fila(fila);}
+    tabla.mostrar(out);out<<"--: diferencia dividida no necesaria para esta fila.\n";
     out<<"Forma de Newton:\nP(x) = "<<d[0][0];
     Vec c(n,0),base(1,1);
     for(int j=0;j<n;++j){
@@ -60,10 +63,12 @@ inline void interpolacion(Sesion &s){
         c=gauss(a,p.y,&s.hoja).x;
     }
     s.hoja<<"\nRESULTADO: POLINOMIO EXPANDIDO\n";polinomio(s.hoja,c);
-    s.hoja<<"\nControl de los coeficientes expandidos en los nodos:\n i | x_i | P(x_i) | y_i | diferencia\n";
+    s.hoja<<"\nCONTROL DE LOS COEFICIENTES EXPANDIDOS EN LOS NODOS\n";
+    Tabla control({"i","x_i","P(x_i)","y_i","diferencia"});
     double maxerr=0,yscale=0;
     for(int i=0;i<n;++i){double v=poli(c,p.x[i]);maxerr=std::max(maxerr,std::fabs(v-p.y[i]));yscale=std::max(yscale,std::fabs(p.y[i]));
-        s.hoja<<i<<" | "<<p.x[i]<<" | "<<v<<" | "<<p.y[i]<<" | "<<v-p.y[i]<<'\n';}
+        control.fila({i,p.x[i],v,p.y[i],v-p.y[i]});}
+    control.mostrar(s.hoja);
     s.hoja<<"Maximo error en nodos de la forma expandida = "<<maxerr<<'\n';
     if(maxerr>1e-8*std::max(1.0,yscale))s.hoja<<"AVISO: la expansion tiene perdida de precision. Usar la forma factorizada/tabla y revisar escala o grado.\n";
     s.mostrar();
@@ -72,9 +77,11 @@ inline void interpolacion(Sesion &s){
         s.hoja<<"EVALUACION DEL POLINOMIO INTERPOLANTE EN x="<<q<<'\n';
         if(q<p.x.front() || q>p.x.back())s.hoja<<"El punto queda fuera de los datos: es EXTRAPOLACION.\n";
         if(metodo==1){
-            s.hoja<<" i | numerador producto(q-x_j) | denominador producto(x_i-x_j) | L_i(q) | y_i*L_i(q)\n";
+            s.hoja<<"num_i=producto(q-x_j); den_i=producto(x_i-x_j), para j distinto de i.\n";
+            Tabla aportes({"i","num_i","den_i","L_i(q)","y_i*L_i(q)"});
             for(int i=0;i<n;++i){double num=1,den=1;for(int j=0;j<n;++j)if(i!=j){num=finito(num*(q-p.x[j]));den=finito(den*(p.x[i]-p.x[j]));}
-                double li=finito(num/den);s.hoja<<i<<" | "<<num<<" | "<<den<<" | "<<li<<" | "<<finito(p.y[i]*li)<<'\n';}
+                double li=finito(num/den);aportes.fila({i,num,den,li,finito(p.y[i]*li)});}
+            aportes.mostrar(s.hoja);
         }
         if(metodo==2){
             s.hoja<<"Reemplazo en el polinomio expandido:\nP("<<q<<") = "<<c[0];
@@ -110,13 +117,15 @@ inline void interpolacion(Sesion &s){
             double a=s.num("Inicio de tabla",numero(p.x.front())),b=s.num("Fin de tabla",numero(p.x.back()));
             if(b<=a)throw std::runtime_error("La tabla requiere inicio < fin.");
             int intervalos=s.entero("Cantidad de subintervalos",1,1000,"10");
-            s.hoja<<"TABLA DEL POLINOMIO: h="<<(b-a)/intervalos<<"\n i | x_i | P(x_i)";
-            if(!f.empty())s.hoja<<" | f(x_i) | error absoluto";
-            s.hoja<<'\n';
+            s.hoja<<"TABLA DEL POLINOMIO: h="<<(b-a)/intervalos<<'\n';
+            std::vector<std::string> columnas={"i","x_i","P(x_i)"};
+            if(!f.empty()){columnas.push_back("f(x_i)");columnas.push_back("error absoluto");}
+            Tabla tabla(columnas);
             for(int i=0;i<=intervalos;++i){double q=i==intervalos?b:a+(b-a)*i/intervalos;double v=lagrangeValor(p,q);
-                s.hoja<<i<<" | "<<q<<" | "<<v;
-                if(!f.empty()){double real=evaluar(f,q);s.hoja<<" | "<<real<<" | "<<std::fabs(v-real);}
-                s.hoja<<'\n';}
+                std::vector<Celda> fila={i,q,v};
+                if(!f.empty()){double real=evaluar(f,q);fila.push_back(real);fila.push_back(std::fabs(v-real));}
+                tabla.fila(fila);}
+            tabla.mostrar(s.hoja);
         }
         s.mostrar();
     }

@@ -16,7 +16,6 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
     const char *nombres[]={"BISECCION","REGULA FALSI (clasica)","NEWTON-RAPHSON","SECANTE","PUNTO FIJO"};
     const bool cerrado=metodo==BISECCION || metodo==FALSA_POSICION;
     const bool fijo=metodo==PUNTO_FIJO;
-    std::cout<<"\n"<<nombres[metodo]<<"\n";
     std::string f=s.funcion(fijo?"g(x), despejada para iterar x_(k+1)=g(x_k)":"f(x), ecuacion f(x)=0");
     std::string df;
     if(metodo==NEWTON) df=s.funcion("f'(x) exacta [ENTER=derivada numerica central]",true);
@@ -85,11 +84,14 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
         if(fr==0){raiz=viejo;exacta=true;terminada=true;convergio=true;motivo="El punto inicial satisface la ecuacion en aritmetica de maquina.";}
     }
     s.hoja<<"\nTABLA DE ITERACIONES (sin redondeo interno)\n";
-    if(cerrado)s.hoja<<"n | a | b | f(a) | f(b) | x_n | f(x_n) | E_abs | E_rel% | E_IUA% | cota_biseccion\n";
-    else if(metodo==SECANTE)s.hoja<<"n | x_(n-2) | x_(n-1) | f_anterior | f_actual | x_n | f(x_n) | E_abs | E_rel% | E_IUA%\n";
-    else s.hoja<<"n | x_(n-1) | "<<(fijo?"g(x_(n-1))":"f(x_(n-1))")<<" | "<<(fijo?"g'(x_(n-1))":"f'(x_(n-1))")<<" | x_n | residuo | E_abs | E_rel% | E_IUA%\n";
+    std::vector<std::string> columnas;
+    if(cerrado)columnas={"n","a","b","f(a)","f(b)","x_n","f(x_n)","E_abs","E_rel%","E_IUA%","cota_biseccion"};
+    else if(metodo==SECANTE)columnas={"n","x_(n-2)","x_(n-1)","f_anterior","f_actual","x_n","f(x_n)","E_abs","E_rel%","E_IUA%"};
+    else columnas={"n","x_(n-1)",fijo?"g(x_(n-1))":"f(x_(n-1))",fijo?"g'(x_(n-1))":"f'(x_(n-1))","x_n","residuo","E_abs","E_rel%","E_IUA%"};
+    Tabla tabla(columnas);
+    std::ostringstream detalle;detalle<<std::setprecision(15);
     double pasoAnterior=0,pasoAnteAnterior=0;
-    for(int k=1;k<=maxit && !terminada;++k){
+    try {for(int k=1;k<=maxit && !terminada;++k){
         double xn=0,d=0,cota=0,fp=0,fv=0;
         if(cerrado){
             cota=finito(b/2-a/2);
@@ -108,39 +110,39 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
         double fn=valor(xn),ea=std::fabs(xn-viejo),er=errorRel(xn,viejo),ei=errorRel(xn,viejo,true);
         bool tieneAnterior=!cerrado || anteriorInicial || k>1;
         elegido=criterio==1?ea:criterio==2?er:criterio==3?ei:criterio==4?std::fabs(fn):cota;
-        if(cerrado){
-            s.hoja<<k<<" | "<<a<<" | "<<b<<" | "<<fa<<" | "<<fb<<" | "<<xn<<" | "<<fn<<" | ";
-        }else if(metodo==SECANTE){s.hoja<<k<<" | "<<previo<<" | "<<viejo<<" | "<<fp<<" | "<<fv<<" | "<<xn<<" | "<<fn<<" | ";}
-        else {s.hoja<<k<<" | "<<viejo<<" | "<<(fijo?evaluar(f,viejo):fv)<<" | "<<d<<" | "<<xn<<" | "<<fn<<" | ";}
-        if(tieneAnterior)s.hoja<<ea<<" | "<<er<<" | "<<ei;
-        else s.hoja<<"-- | -- | --";
-        if(cerrado) {s.hoja<<" | ";if(metodo==BISECCION)s.hoja<<cota;else s.hoja<<"--";}
-        s.hoja<<'\n';
+        std::vector<Celda> fila;
+        if(cerrado)fila={k,a,b,fa,fb,xn,fn};
+        else if(metodo==SECANTE)fila={k,previo,viejo,fp,fv,xn,fn};
+        else fila={k,viejo,fijo?evaluar(f,viejo):fv,d,xn,fn};
+        if(tieneAnterior){fila.push_back(ea);fila.push_back(er);fila.push_back(ei);}
+        else {fila.push_back("--");fila.push_back("--");fila.push_back("--");}
+        if(cerrado)fila.push_back(metodo==BISECCION?Celda(cota):Celda("--"));
+        tabla.fila(fila);
         if(!ref.empty()){
-            s.hoja<<"Error verdadero iteracion "<<k<<": absoluto="<<std::fabs(xn-exacto);
-            if(exacto!=0)s.hoja<<"; porcentual="<<100*std::fabs(xn-exacto)/std::fabs(exacto);
-            s.hoja<<'\n';
+            detalle<<"Error verdadero iteracion "<<k<<": absoluto="<<std::fabs(xn-exacto);
+            if(exacto!=0)detalle<<"; porcentual="<<100*std::fabs(xn-exacto)/std::fabs(exacto);
+            detalle<<'\n';
         }
         if(metodo==NEWTON && k>=2){
-            s.hoja<<"C["<<k-1<<"] = ";
+            detalle<<"C["<<k-1<<"] = ";
             if(pasoAnterior>0){double ck=(ea/pasoAnterior)/pasoAnterior;
-                if(std::isfinite(ck))s.hoja<<ck;else s.hoja<<"no definido: fuera de rango";}
-            else s.hoja<<"no definido: paso anterior cero";
-            s.hoja<<'\n';
+                if(std::isfinite(ck))detalle<<ck;else detalle<<"no definido: fuera de rango";}
+            else detalle<<"no definido: paso anterior cero";
+            detalle<<'\n';
         }
         if(k>=3 && ea>0 && pasoAnterior>0 && pasoAnteAnterior>0){
             double den=std::log(pasoAnterior/pasoAnteAnterior),num=std::log(ea/pasoAnterior);
-            if(den!=0 && std::isfinite(den) && std::isfinite(num))s.hoja<<"Orden observado p (pasos, sensible al redondeo) = "<<num/den<<'\n';
+            if(den!=0 && std::isfinite(den) && std::isfinite(num))detalle<<"Orden observado p en iteracion "<<k<<" (pasos, sensible al redondeo) = "<<num/den<<'\n';
         }
         if(tieneAnterior){pasoAnteAnterior=pasoAnterior;pasoAnterior=ea;}
         if(k==1){
-            s.hoja<<"Primer reemplazo: ";
-            if(metodo==BISECCION)s.hoja<<"("<<a<<" + "<<b<<")/2 = "<<xn;
-            else if(metodo==FALSA_POSICION)s.hoja<<a<<" - ("<<fa<<")*("<<b<<"-"<<a<<")/("<<fb<<"-("<<fa<<")) = "<<xn;
-            else if(metodo==NEWTON)s.hoja<<viejo<<" - ("<<fv<<")/("<<d<<") = "<<xn;
-            else if(metodo==SECANTE)s.hoja<<viejo<<" - ("<<fv<<")*("<<viejo<<"-("<<previo<<"))/("<<fv<<"-("<<fp<<")) = "<<xn;
-            else s.hoja<<"("<<1-lambda<<")*("<<viejo<<") + ("<<lambda<<")*g("<<viejo<<") = "<<xn;
-            s.hoja<<'\n';
+            detalle<<"Primer reemplazo: ";
+            if(metodo==BISECCION)detalle<<"("<<a<<" + "<<b<<")/2 = "<<xn;
+            else if(metodo==FALSA_POSICION)detalle<<a<<" - ("<<fa<<")*("<<b<<"-"<<a<<")/("<<fb<<"-("<<fa<<")) = "<<xn;
+            else if(metodo==NEWTON)detalle<<viejo<<" - ("<<fv<<")/("<<d<<") = "<<xn;
+            else if(metodo==SECANTE)detalle<<viejo<<" - ("<<fv<<")*("<<viejo<<"-("<<previo<<"))/("<<fv<<"-("<<fp<<")) = "<<xn;
+            else detalle<<"("<<1-lambda<<")*("<<viejo<<") + ("<<lambda<<")*g("<<viejo<<") = "<<xn;
+            detalle<<'\n';
         }
         raiz=xn;fr=fn;kfin=k;
         bool cumpleE=estricto?elegido<tol:elegido<=tol;
@@ -154,8 +156,13 @@ inline void raiz(Sesion &s,MetodoRaiz metodo){
         if(cerrado){if(std::signbit(fa)==std::signbit(fn)){a=xn;fa=fn;}else{b=xn;fb=fn;}}
         else if(metodo==SECANTE)previo=viejo;
         viejo=xn;
-    }
+    }}catch(...){tabla.mostrar(s.hoja);s.hoja<<detalle.str();throw;}
+    tabla.mostrar(s.hoja);
+    s.hoja<<"--: dato no disponible o no aplicable. E_abs: diferencia absoluta entre iterados.\n"
+          <<"E_rel% y E_IUA%: errores aproximados porcentuales.\n";
+    if(!detalle.str().empty())s.hoja<<"\nDETALLE DE ITERACIONES\n"<<detalle.str();
     if(motivo.empty())motivo=modo==2?"Se completo la cantidad solicitada de iteraciones.":"Se alcanzo el maximo de iteraciones sin la tolerancia pedida.";
+    titulo(s.hoja,"RESUMEN DEL METODO",'-');
     s.hoja<<"\nESTADO: "<<motivo<<'\n';
     s.hoja<<(convergio?"RESULTADO: x = ":"ULTIMA APROXIMACION (sin convergencia certificada): x = ")<<raiz
           <<"\nIteraciones realizadas = "<<kfin<<"\nResiduo absoluto = "<<std::fabs(fr)<<'\n';

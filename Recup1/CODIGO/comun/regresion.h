@@ -74,20 +74,26 @@ inline void regresion(Sesion &s,bool soloRecta){
     s.hoja<<"Base del sistema: ";for(int j=0;j<m;++j)s.hoja<<"phi"<<j<<"="<<base[j]<<"; ";s.hoja<<"\n";
     if(tipo>=3)s.hoja<<"En el sistema linealizado, la variable x de la base representa u.\n";
     if(tipo!=2){
-        s.hoja<<"\nTABLA DE SUMATORIAS (u=x, v=y si no hay transformacion)\n i | u | v";
-        for(int k=2;k<=2*grado;++k)s.hoja<<" | u^"<<k;
-        for(int k=1;k<=grado;++k)s.hoja<<" | u^"<<k<<"*v";
-        s.hoja<<" | v^2\n";
+        s.hoja<<"\nTABLA DE SUMATORIAS (u=x, v=y si no hay transformacion)\n";
+        std::vector<std::string> columnas={"i","u","v"};
+        for(int k=2;k<=2*grado;++k)columnas.push_back("u^"+std::to_string(k));
+        for(int k=1;k<=grado;++k)columnas.push_back("u^"+std::to_string(k)+"*v");
+        columnas.push_back("v^2");Tabla tabla(columnas);
         Vec sumas(2*grado+1,0),productos(grado+1,0);double v2=0;
-        for(int i=0;i<n;++i){s.hoja<<i<<" | "<<u[i]<<" | "<<v[i];
-            for(int k=0;k<=2*grado;++k){double t=finito(std::pow(u[i],k));sumas[k]=finito(sumas[k]+t);if(k>=2)s.hoja<<" | "<<t;}
-            for(int k=0;k<=grado;++k){double t=finito(std::pow(u[i],k)*v[i]);productos[k]=finito(productos[k]+t);if(k>=1)s.hoja<<" | "<<t;}
-            double t=finito(v[i]*v[i]);v2=finito(v2+t);s.hoja<<" | "<<t<<'\n';}
-        s.hoja<<"SUMAS: n="<<n;for(int k=0;k<=2*grado;++k)s.hoja<<"; suma u^"<<k<<"="<<sumas[k];
-        for(int k=0;k<=grado;++k)s.hoja<<"; suma u^"<<k<<"*v="<<productos[k];
-        s.hoja<<"; suma v^2="<<v2<<'\n';
+        for(int i=0;i<n;++i){std::vector<Celda> fila={i,u[i],v[i]};
+            for(int k=0;k<=2*grado;++k){double t=finito(std::pow(u[i],k));sumas[k]=finito(sumas[k]+t);if(k>=2)fila.push_back(t);}
+            for(int k=0;k<=grado;++k){double t=finito(std::pow(u[i],k)*v[i]);productos[k]=finito(productos[k]+t);if(k>=1)fila.push_back(t);}
+            double t=finito(v[i]*v[i]);v2=finito(v2+t);fila.push_back(t);tabla.fila(fila);}
+        tabla.mostrar(s.hoja);
+        s.hoja<<"\nSUMAS: n="<<n<<'\n';
+        for(int k=0;k<=2*grado;++k)s.hoja<<"  suma u^"<<k<<" = "<<sumas[k]<<'\n';
+        for(int k=0;k<=grado;++k)s.hoja<<"  suma u^"<<k<<"*v = "<<productos[k]<<'\n';
+        s.hoja<<"  suma v^2 = "<<v2<<'\n';
     }else{
-        s.hoja<<"\n i | y | phi0 | phi1 | ...\n";for(int i=0;i<n;++i){s.hoja<<i<<" | "<<v[i];for(double z:phi[i])s.hoja<<" | "<<z;s.hoja<<'\n';}
+        s.hoja<<"\nVALORES DE LAS FUNCIONES DE BASE\n";
+        std::vector<std::string> columnas={"i","y"};for(int j=0;j<m;++j)columnas.push_back("phi"+std::to_string(j));
+        Tabla tabla(columnas);for(int i=0;i<n;++i){std::vector<Celda> fila={i,v[i]};for(double z:phi[i])fila.push_back(z);tabla.fila(fila);}
+        tabla.mostrar(s.hoja);
     }
     normales(s.hoja,phi,v,true);
     Mat estable=phi;
@@ -122,11 +128,13 @@ inline void regresion(Sesion &s,bool soloRecta){
         return pred;
     };
     double media=0;for(double y:p.y)media+=y/n;double sr=0,st=0,srt=0,maxexp=0;
-    s.hoja<<"\nRESIDUOS EN LA ESCALA ORIGINAL\n i | x_i | y_i | y ajustado | e_i=y_i-y ajustado | e_i^2\n";
+    s.hoja<<"\nRESIDUOS EN LA ESCALA ORIGINAL\ne_i = y_i - y ajustado.\n";
+    Tabla residuos({"i","x_i","y_i","y ajustado","e_i","e_i^2"});
     for(int i=0;i<n;++i){double pred=predecir(p.x[i]),err=finito(p.y[i]-pred);sr=finito(sr+err*err);st=finito(st+(p.y[i]-media)*(p.y[i]-media));
         double errt=v[i]-(tipo==2?pred:poli(ct,(u[i]-centro)/escala));srt=finito(srt+errt*errt);
         if(tipo==1)maxexp=std::max(maxexp,std::fabs(poli(c,p.x[i])-pred));
-        s.hoja<<i<<" | "<<p.x[i]<<" | "<<p.y[i]<<" | "<<pred<<" | "<<err<<" | "<<err*err<<'\n';}
+        residuos.fila({i,p.x[i],p.y[i],pred,err,err*err});}
+    residuos.mostrar(s.hoja);
     s.hoja<<"Media y = "<<media<<"\nSr = suma e_i^2 = "<<sr<<"\nSt = suma (y_i-media)^2 = "<<st
           <<"\nECM (error cuadratico medio, sin raiz) = Sr/n = "<<sr/n
           <<"\nRMSE (raiz del ECM) = sqrt(Sr/n) = "<<std::sqrt(sr/n)<<'\n';

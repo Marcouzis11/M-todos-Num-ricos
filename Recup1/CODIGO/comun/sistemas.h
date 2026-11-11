@@ -14,9 +14,11 @@ inline void cargarSistema(Sesion &s,Mat &a,Vec &b){
     s.hoja<<"Sistema A*x=b, orden "<<n<<". Incognitas x1..x"<<n<<".\n";matriz(s.hoja,a,b);
 }
 inline void verificarSistema(Sesion &s,const Mat &a,const Vec &b,const Vec &x){
-    s.hoja<<"\nCOMPROBACION EN EL SISTEMA ORIGINAL\n i | (A*x)_i | b_i | (A*x-b)_i\n";
+    s.hoja<<"\nCOMPROBACION EN EL SISTEMA ORIGINAL\n";
+    Tabla tabla({"i","(A*x)_i","b_i","(A*x-b)_i"});
     for(size_t i=0;i<a.size();++i){double v=0;for(size_t j=0;j<x.size();++j)v+=a[i][j]*x[j];
-        s.hoja<<i+1<<" | "<<finito(v)<<" | "<<b[i]<<" | "<<finito(v-b[i])<<'\n';}
+        tabla.fila({i+1,finito(v),b[i],finito(v-b[i])});}
+    tabla.mostrar(s.hoja);
     s.hoja<<"Norma infinito del residuo ||A*x-b||inf = "<<residuo(a,b,x)<<'\n';
 }
 inline void eliminacion(Sesion &s){
@@ -114,17 +116,20 @@ inline void iterativos(Sesion &s){
         s.hoja<<"; maximo "<<maxit<<" iteraciones.\n";}
     if(!referencia.empty()){s.hoja<<"Vector de referencia: ";for(double z:referencia)s.hoja<<z<<' ';s.hoja<<'\n';}
     if(modo==2)s.hoja<<"Se pidieron "<<maxit<<" iteraciones fijas.\n";
-    s.hoja<<"\nk";for(int i=0;i<n;++i)s.hoja<<" | x"<<i+1;s.hoja<<" | E | ||A*x-b||inf\n0";
-    for(double v:x)s.hoja<<" | "<<v;
-    s.hoja<<" | -- | "<<residuo(a,b,x)<<'\n';
+    s.hoja<<"\nTABLA DE ITERACIONES\n";
+    std::vector<std::string> columnas={"k"};for(int i=0;i<n;++i)columnas.push_back("x"+std::to_string(i+1));
+    columnas.push_back("E");columnas.push_back("||A*x-b||inf");Tabla tabla(columnas);
+    std::vector<Celda> inicial={0};for(double v:x)inicial.push_back(v);
+    inicial.push_back("--");inicial.push_back(residuo(a,b,x));tabla.fila(inicial);
+    std::ostringstream detalle;detalle<<std::setprecision(15);
     int kfin=0;bool converge=false;double e=0;std::string estado;
     if(criterio<8 && residuo(a,b,x)==0){converge=true;estado="El vector inicial resuelve el sistema.";}
-    for(int k=1;k<=maxit && !converge;++k){
+    try {for(int k=1;k<=maxit && !converge;++k){
         Vec nuevo=x,delta(n),sumaVect(n);
         for(int i=0;i<n;++i){double suma=0;for(int j=0;j<n;++j)if(j!=i)suma+=a[i][j]*((metodo!=1 && j<i)?nuevo[j]:x[j]);
             double candidato=finito((b[i]-suma)/a[i][i]);
             nuevo[i]=finito((1-omega)*x[i]+omega*candidato);
-            if(k==1)s.hoja<<"Primer paso, componente "<<i+1<<": candidato=("<<b[i]<<"-("<<suma<<"))/("<<a[i][i]<<")="<<candidato<<"; x nuevo="<<nuevo[i]<<'\n';
+            if(k==1)detalle<<"Primer paso, componente "<<i+1<<": candidato=("<<b[i]<<"-("<<suma<<"))/("<<a[i][i]<<")="<<candidato<<"; x nuevo="<<nuevo[i]<<'\n';
             delta[i]=finito(nuevo[i]-x[i]);sumaVect[i]=finito(nuevo[i]/2+x[i]/2);}
         double r=residuo(a,b,nuevo),num=normaInf(delta),den=criterio==4?normaInf(sumaVect):normaInf(nuevo);
         Vec rv(n),verdadero(n);
@@ -132,17 +137,21 @@ inline void iterativos(Sesion &s){
             if(!referencia.empty())verdadero[i]=finito(nuevo[i]-referencia[i]);}
         double rCorte=criterio==7?norma2(rv):r;
         e=criterio>=8?(criterio==8?normaInf(verdadero):norma2(verdadero)):criterio==6?num:criterio==7?norma2(delta):criterio==1?num:criterio==2?norma2(delta):criterio==5?r:den==0?(num==0?0:std::numeric_limits<double>::infinity()):100*(num/den);
-        s.hoja<<k;for(double v:nuevo)s.hoja<<" | "<<v;s.hoja<<" | "<<e<<" | "<<r<<'\n';
-        if(criterio==7)s.hoja<<"Residuo euclideo iteracion "<<k<<" = "<<rCorte<<'\n';
-        if(!referencia.empty())s.hoja<<"Error verdadero iteracion "<<k<<": inf="<<normaInf(verdadero)<<"; euclideo="<<norma2(verdadero)<<'\n';
+        std::vector<Celda> fila={k};for(double v:nuevo)fila.push_back(v);fila.push_back(e);fila.push_back(r);tabla.fila(fila);
+        if(criterio==7)detalle<<"Residuo euclideo iteracion "<<k<<" = "<<rCorte<<'\n';
+        if(!referencia.empty())detalle<<"Error verdadero iteracion "<<k<<": inf="<<normaInf(verdadero)<<"; euclideo="<<norma2(verdadero)<<'\n';
         bool estancado=normaInf(delta)==0;x=nuevo;kfin=k;
         bool cumple=estricto?e<tol:e<=tol;
         bool combinado=criterio==6 || criterio==7;
         if(combinado)cumple=cumple && (estricto?rCorte<tolR:rCorte<=tolR);
         if((r==0 && !combinado && criterio<8) || (modo==1 && cumple)){converge=true;estado=r==0?"Residuo cero en aritmetica de maquina.":"Se alcanzo la tolerancia del criterio elegido.";}
         else if(estancado){estado="Estancamiento por precision de maquina.";break;}
-    }
+    }}catch(...){tabla.mostrar(s.hoja);s.hoja<<detalle.str();throw;}
+    tabla.mostrar(s.hoja);
+    s.hoja<<"E: criterio elegido. --: no hay paso previo para calcular el error inicial.\n";
+    if(!detalle.str().empty())s.hoja<<"\nDETALLE DE ITERACIONES\n"<<detalle.str();
     if(estado.empty())estado=modo==1?"Maximo de iteraciones sin alcanzar tolerancia.":"Se completo la cantidad de iteraciones solicitada.";
+    titulo(s.hoja,"RESUMEN DEL METODO",'-');
     s.hoja<<"\nESTADO: "<<estado<<'\n'<<(converge?"RESULTADO\n":"ULTIMA APROXIMACION (sin convergencia certificada)\n");
     for(int i=0;i<n;++i)s.hoja<<"x"<<i+1<<" = "<<x[i]<<'\n';
     s.hoja<<"Iteraciones = "<<kfin<<"; ultimo E = "<<e<<'\n';

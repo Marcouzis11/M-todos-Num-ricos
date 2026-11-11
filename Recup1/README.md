@@ -14,6 +14,16 @@ El menú compila los programas y permite elegir el tema. En Linux recompila solo
 
 Cada ejercicio genera un bloque **TEXTO PARA COPIAR EN LA HOJA** con datos, fórmulas, desarrollo, tablas y resultados. Se guarda también en `salida_<nombre_del_programa>.txt`, **junto al ejecutable**, agregando cada ejercicio al final sin borrar los anteriores. Seleccioná ese bloque en la consola o abrí el archivo.
 
+La consola de los once programas usa títulos por método, opciones en líneas separadas y tablas con bordes, encabezados completos y números alineados a la derecha. Las matrices identifican las filas, las columnas de coeficientes y el término independiente `b`. El detalle de los pasos aparece separado de la tabla de iteraciones y del resumen final.
+
+Las tablas anchas se dividen en bloques que repiten el índice de fila, sin omitir columnas ni iteraciones. Conservan las 15 cifras significativas del informe; `--` indica un dato no disponible o no aplicable. El formato también se conserva en los archivos de salida, sin códigos de color. En Linux se detecta el ancho de la terminal; en ausencia de ese dato se usan 100 columnas. Podés fijarlo entre 40 y 240 columnas:
+
+```bash
+RECUP_ANCHO=80 bash Recup1/iniciar.sh
+```
+
+En Windows, desde `cmd`: `set RECUP_ANCHO=80` antes de abrir `iniciar.bat`. El formato de las tablas no cambia la precisión de los cálculos ni los archivos CSV para exportar datos.
+
 ## Qué hay en cada carpeta
 
 - **`PARAEDITAR/`**: los once `.cpp`, los dos `data.txt` y los apuntes de `Cursada2026Promocion/`, copiados sin cambios y con las mismas rutas. Conserva los problemas de los originales: es la copia para editar o consultar la cursada.

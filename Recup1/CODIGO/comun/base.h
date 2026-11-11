@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "consola.h"
 
 namespace recup {
 using Vec = std::vector<double>;
@@ -120,11 +121,27 @@ public:
         if(!archivo) std::cout<<"AVISO: no se pudo abrir "<<ruta<<". La salida sigue en consola.\n";
         else archivo<<"\n================ NUEVO EJERCICIO ================\n";
         hoja<<std::setprecision(15);
-        std::cout<<"\nFunciones por teclado: x^3, exp(-x), ln(x), sqrt(x), sen(x), pi.\n"
-                 <<"Angulos en radianes. Decimales con punto o coma. Escribi salir para terminar.\n";
+        const std::string nombres[][2]={
+            {"Biseccion","BISECCION"},{"RegulaFalsi","REGULA FALSI"},
+            {"Newton-Raphson","NEWTON-RAPHSON"},{"Secante","SECANTE"},{"Punto-Fijo","PUNTO FIJO"},
+            {"Eliminacion-Gaussiana","ELIMINACION GAUSSIANA"},
+            {"JacobiGaussSeidelRelax","JACOBI / GAUSS-SEIDEL / SOR"},
+            {"interpolacion","INTERPOLACION"},{"Spline","SPLINES"},
+            {"regresionLineal","REGRESION LINEAL"},{"polynomialRegression","REGRESION POLINOMICA Y OTROS AJUSTES"}};
+        std::string nombreVisible=nombre;
+        for(const auto &par:nombres)if(par[0]==nombre)nombreVisible=par[1];
+        titulo(std::cout,"RECUPERATORIO 1 | "+nombreVisible);
+        textoConsola(std::cout,
+            "Funciones: x^3, exp(-x), ln(x), sqrt(x), sen(x), pi. Angulos en radianes.\n"
+            "Decimales: punto o coma. Listas: valores separados por espacios.\n"
+            "ENTER acepta el valor sugerido. Escribi salir para terminar.\n"
+            "El desarrollo y los resultados se guardan junto al ejecutable.");
+        titulo(std::cout,"DATOS DE ENTRADA",'-');
     }
     std::string leer(const std::string &mensaje){
-        std::cout<<mensaje<<std::flush;
+        std::cout<<'\n';
+        textoConsola(std::cout,opcionesConsola(mensaje));
+        std::cout<<"  > "<<std::flush;
         std::string s; if(!std::getline(std::cin,s)) throw FinEntrada{};
         s=trim(s); if(s=="salir" || s=="SALIR") throw FinEntrada{};
         if(archivo) {archivo<<mensaje<<s<<'\n'; archivo.flush();}
@@ -151,8 +168,11 @@ public:
             catch(const std::exception &e){std::cout<<"Expresion invalida: "<<e.what()<<'\n';}}
     }
     void mostrar(){
-        const std::string b="\n================ TEXTO PARA COPIAR EN LA HOJA ================\n"+hoja.str()+
-            "\n================ FIN DEL TEXTO PARA COPIAR ===================\n";
+        std::ostringstream informe;
+        titulo(informe,"TEXTO PARA COPIAR EN LA HOJA");
+        informe<<hoja.str();
+        titulo(informe,"FIN DEL TEXTO PARA COPIAR");
+        const std::string b=informe.str();
         std::cout<<b; if(archivo){archivo<<b; archivo.flush(); std::cout<<"Guardado en: "<<ruta<<'\n';}
         hoja.str(""); hoja.clear();
     }
@@ -213,12 +233,20 @@ inline Puntos puntos(Sesion &s,bool distintos){
         Puntos q; for(size_t i:orden){q.x.push_back(p.x[i]);q.y.push_back(p.y[i]);} p=q;
         for(size_t i=1;i<p.x.size();++i) if(p.x[i]==p.x[i-1]) throw std::runtime_error("Hay abscisas repetidas; no existe interpolacion unica con estos nodos.");
     }
-    s.hoja<<"DATOS ("<<p.x.size()<<" puntos"<<(distintos?", ordenados por x":"")<<")\n i | x_i | y_i\n";
-    for(size_t i=0;i<p.x.size();++i) s.hoja<<i<<" | "<<p.x[i]<<" | "<<p.y[i]<<'\n';
+    s.hoja<<"DATOS ("<<p.x.size()<<" puntos"<<(distintos?", ordenados por x":"")<<")\n";
+    Tabla tabla({"i","x_i","y_i"});
+    for(size_t i=0;i<p.x.size();++i)tabla.fila({i,p.x[i],p.y[i]});
+    tabla.mostrar(s.hoja);
     return p;
 }
 inline void matriz(std::ostream &out,const Mat &a,const Vec &b){
-    for(size_t i=0;i<a.size();++i){out<<"[ "; for(double v:a[i]) out<<std::setw(17)<<v<<' '; out<<" | "<<b[i]<<" ]\n";}
+    std::vector<std::string> columnas={"Fila"};
+    for(size_t j=0;j<a[0].size();++j)columnas.push_back("a"+std::to_string(j+1));
+    columnas.push_back("b");Tabla tabla(columnas);
+    for(size_t i=0;i<a.size();++i){
+        std::vector<Celda> fila={i+1};for(double v:a[i])fila.push_back(v);fila.push_back(b[i]);tabla.fila(fila);
+    }
+    tabla.mostrar(out);
 }
 struct Solucion {Vec x; long double det;};
 // Pivoteo parcial escalado; el umbral se compara con la escala de cada fila.
